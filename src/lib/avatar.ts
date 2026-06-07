@@ -32,7 +32,7 @@ const getPaletteIndex = (seed: string) => {
 };
 
 export const getAvatarDataUri = (seed: string) => {
-  const safeSeed = seed || 'bulkfollows';
+  const safeSeed = seed || 'payfollows';
   const initials = getInitials(safeSeed);
   const [from, to] = palette[getPaletteIndex(safeSeed)];
   const svg = `

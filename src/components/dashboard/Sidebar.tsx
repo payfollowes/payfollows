@@ -14,7 +14,7 @@ const Logo: React.FC = () => (
           <linearGradient id="grad4" x1="17" y1="7" x2="17" y2="17" gradientUnits="userSpaceOnUse"><stop stopColor="#A78BFA"/><stop offset="1" stopColor="#8B5CF6"/></linearGradient>
         </defs>
       </svg>
-      <a href="/#"><span className="text-xl font-bold">BulkFollows</span></a>
+      <a href="/#"><span className="text-xl font-bold">PayFollows</span></a>
     </div>
   );
 

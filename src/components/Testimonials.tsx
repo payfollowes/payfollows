@@ -41,7 +41,7 @@ const Testimonials: React.FC = () => {
         <div className="text-left">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6">Superior Smm Panel To Boost Your Social Media Accounts</h2>
           <p className="text-gray-300 mb-8">
-            Bulkfollows is a real booster for your social media accounts. We work hard to create results-driven strategies to generate social media activities organically. Our packages are very cheap, and we have created all kinds of packages for small, medium and large businesses. Try the Bulkfollows Marketing Panel for your social media growth.
+            PayFollows is a real booster for your social media accounts. We work hard to create results-driven strategies to generate social media activities organically. Our packages are very cheap, and we have created all kinds of packages for small, medium and large businesses. Try the PayFollows Marketing Panel for your social media growth.
           </p>
           <div className="flex gap-4">
             <button className="bg-white/10 hover:bg-white/20 p-3 rounded-lg transition-colors">

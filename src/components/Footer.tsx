@@ -26,7 +26,7 @@ const Logo: React.FC = () => (
         </linearGradient>
       </defs>
     </svg>
-    <span className="text-xl font-bold">BulkFollows</span>
+    <span className="text-xl font-bold">PayFollows</span>
   </div>
 );
 

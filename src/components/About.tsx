@@ -6,18 +6,18 @@ const About: React.FC = () => {
   return (
     <section className="px-4 sm:px-6 lg:px-8 py-20">
       <div className="container mx-auto text-center mb-12">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">About Bulkfollows</h2>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">About PayFollows</h2>
       </div>
       <div className="container mx-auto grid md:grid-cols-2 gap-8">
         <div className="bg-brand-container border border-brand-border rounded-3xl p-8 flex flex-col text-left">
           <h3 className="text-2xl font-bold mb-4">World's Best Cheap & Easy Smm Panel</h3>
           <p className="text-gray-300 mb-6">
-            Bulkfollows is a globally recognized platform offering top-notch SMM services. Whether you're in the United States, India, or Turkey, you can access our services anywhere, anytime. Our panel is designed to be user-friendly and cost-effective, providing the best value for your money.
+            PayFollows is a globally recognized platform offering top-notch SMM services. Whether you're in the United States, India, or Turkey, you can access our services anywhere, anytime. Our panel is designed to be user-friendly and cost-effective, providing the best value for your money.
           </p>
           <div className="mt-auto bg-black/30 rounded-2xl p-4 border border-brand-border flex-grow flex items-center justify-center">
              <img
                src={aboutDashboardIllustration}
-               alt="Bulkfollows Dashboard"
+               alt="PayFollows Dashboard"
                className="rounded-lg object-cover"
                fetchpriority="low"
                loading="lazy"
@@ -28,7 +28,7 @@ const About: React.FC = () => {
         <div className="bg-brand-container border border-brand-border rounded-3xl p-8 flex flex-col text-left">
             <div className="bg-black/30 rounded-2xl p-6 border border-brand-border flex-grow flex flex-col justify-center">
                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-semibold">Bulkfollows</span>
+                    <span className="text-lg font-semibold">PayFollows</span>
                     <div className="flex space-x-1">
                         <span className="w-3 h-3 bg-gray-600 rounded-full"></span>
                         <span className="w-3 h-3 bg-gray-600 rounded-full"></span>

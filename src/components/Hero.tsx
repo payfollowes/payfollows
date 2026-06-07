@@ -9,11 +9,11 @@ const Hero: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   const comparisonFeatures = [
-    { name: "Free Childpanel", bulkfollows: true, others: true },
-    { name: "Point for each $spend", bulkfollows: true, others: true },
-    { name: "Upto 10% Discount", bulkfollows: true, others: true },
-    { name: "Upto 15% Deposit Bonus", bulkfollows: true, others: true },
-    { name: "24/7 Support through ticket, Whatsapp, Telegram", bulkfollows: true, others: true },
+    { name: "Free Childpanel", payfollows: true, others: true },
+    { name: "Point for each $spend", payfollows: true, others: true },
+    { name: "Upto 10% Discount", payfollows: true, others: true },
+    { name: "Upto 15% Deposit Bonus", payfollows: true, others: true },
+    { name: "24/7 Support through ticket, Whatsapp, Telegram", payfollows: true, others: true },
   ];
 
   const handleInputChange = (field: 'username' | 'password', value: string) => {
@@ -62,9 +62,9 @@ const Hero: React.FC = () => {
       <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-6">
           <span className="self-start bg-purple-500/20 text-brand-light-purple px-4 py-1 rounded-full text-sm font-medium border border-purple-500/30">Smm Panel</span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">Welcome to Bulkfollows <br /> Smm Panel!</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">Welcome to PayFollows <br /> Smm Panel!</h1>
           <p className="text-gray-300 max-w-lg">
-            In today's fast-changing digital world, businesses are using social media to connect with their target audience more effectively than ever. This has made Social Media Marketing (SMM) a powerful tool for marketers. One platform that stands out for providing SMM services is Bulkfollows.
+            In today's fast-changing digital world, businesses are using social media to connect with their target audience more effectively than ever. This has made Social Media Marketing (SMM) a powerful tool for marketers. One platform that stands out for providing SMM services is PayFollows.
           </p>
           <div className="bg-brand-container border border-brand-border rounded-2xl p-6 flex flex-col gap-4 mt-4">
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -136,9 +136,9 @@ const Hero: React.FC = () => {
         </div>
 
         <div className="bg-brand-container border border-brand-border rounded-3xl p-8 backdrop-blur-sm shadow-purple-glow">
-          <h3 className="text-2xl font-bold mb-6 text-center">Bulkfollows VS Others</h3>
+          <h3 className="text-2xl font-bold mb-6 text-center">PayFollows VS Others</h3>
           <div className="flex justify-around bg-black/20 rounded-lg p-1 mb-6">
-            <button className="w-1/2 py-2.5 rounded-md bg-gradient-to-r from-brand-accent to-brand-purple text-white font-semibold text-sm">Bulkfollows</button>
+            <button className="w-1/2 py-2.5 rounded-md bg-gradient-to-r from-brand-accent to-brand-purple text-white font-semibold text-sm">PayFollows</button>
             <button className="w-1/2 py-2.5 rounded-md text-gray-300 font-semibold text-sm">Others Site</button>
           </div>
           <div className="flex flex-col gap-4">
@@ -146,7 +146,7 @@ const Hero: React.FC = () => {
               <div key={index} className="flex justify-between items-center text-sm text-gray-300">
                 <span>{feature.name}</span>
                 <div className="flex items-center gap-6 sm:gap-16">
-                  <span className="text-green-400">{feature.bulkfollows ? '✓' : '✗'}</span>
+                  <span className="text-green-400">{feature.payfollows ? '✓' : '✗'}</span>
                   <span className="text-green-400">{feature.others ? '✓' : '✗'}</span>
                 </div>
               </div>

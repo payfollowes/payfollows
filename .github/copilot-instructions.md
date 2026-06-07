@@ -1,7 +1,7 @@
-# BulkFollows SMM Panel - AI Copilot Instructions
+# PayFollows SMM Panel - AI Copilot Instructions
 
 ## Project Overview
-**BulkFollows** is a Social Media Marketing (SMM) reseller panel with dual frontend (React/Vite), backend (Express), and payment integration (FastPay). Built for multi-currency support, admin dashboards, and provider management.
+**PayFollows** is a Social Media Marketing (SMM) reseller panel with dual frontend (React/Vite), backend (Express), and payment integration (FastPay). Built for multi-currency support, admin dashboards, and provider management.
 
 ## Architecture
 

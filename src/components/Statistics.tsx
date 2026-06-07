@@ -11,9 +11,9 @@ const Statistics: React.FC = () => {
     return (
         <section className="px-4 sm:px-6 lg:px-8 py-20">
             <div className="container mx-auto text-center mb-12">
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Statistics of Bulkfollows</h2>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Statistics of PayFollows</h2>
                 <p className="max-w-3xl mx-auto text-gray-300 mt-4">
-                    Bulkfollows clients exist all over the world, and we have over 50 million active clients with over 5000 active services. Our clients work with us because of the quality we offer.
+                    PayFollows clients exist all over the world, and we have over 50 million active clients with over 5000 active services. Our clients work with us because of the quality we offer.
                 </p>
             </div>
             <div className="container mx-auto">

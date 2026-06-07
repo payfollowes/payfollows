@@ -25,7 +25,7 @@ const Benefits: React.FC = () => {
   return (
     <section className="px-4 sm:px-6 lg:px-8 py-20">
       <div className="container mx-auto text-center mb-12">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Benefits of Using Bulkfollows</h2>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Benefits of Using PayFollows</h2>
       </div>
       <div className="container mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {benefitItems.map((item, index) => (

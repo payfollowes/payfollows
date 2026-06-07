@@ -50,7 +50,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 const buildSystemNotification = (): Notification => ({
     id: 'welcome',
     title: 'Welcome',
-    message: 'Welcome to BulkFollows SMM Panel',
+    message: 'Welcome to PayFollows SMM Panel',
     type: 'info',
     timestamp: new Date(),
     read: false,

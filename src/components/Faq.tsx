@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 
 const faqData = [
   { question: "How to Register?", answer: "Simply click on the 'Sign Up' button, fill in your details, and you're good to go. The process takes less than a minute." },
-  { question: "How Bulkfollows can help you make money?", answer: "Bulkfollows offers reseller panels, allowing you to sell our SMM services to your own clients at a profit. We provide the services, you set the price." },
+  { question: "How Payfollows can help you make money?", answer: "PayFollows offers reseller panels, allowing you to sell our SMM services to your own clients at a profit. We provide the services, you set the price." },
   { question: "How to Add Funds?", answer: "Navigate to the 'Add Funds' section in your dashboard. We support various payment methods including credit cards, PayPal, and cryptocurrencies for your convenience." },
   { question: "Do we offer Targeted smm panel services?", answer: "Yes, many of our services offer targeting options, such as by country or demographic, to ensure you reach the right audience." },
   { question: "How to Place an Order?", answer: "Go to the 'New Order' page, select a category and service, enter the link and quantity, and submit. Your order will be processed instantly." },
-  { question: "Why Choose Bulkfollows?", answer: "We offer the highest quality services at the most competitive prices, with 24/7 customer support and a user-friendly platform." },
+  { question: "Why Choose PayFollows?", answer: "We offer the highest quality services at the most competitive prices, with 24/7 customer support and a user-friendly platform." },
 ];
 
 const FaqItem: React.FC<{ question: string; answer: string; isOpen: boolean; onClick: () => void }> = ({ question, answer, isOpen, onClick }) => {

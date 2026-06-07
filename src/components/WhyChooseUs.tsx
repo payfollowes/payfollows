@@ -6,7 +6,7 @@ const WhyChooseUs: React.FC = () => {
     <section className="px-4 sm:px-6 lg:px-8 py-20">
       <div className="container mx-auto grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-brand-container border border-brand-border rounded-3xl p-8 backdrop-blur-sm">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Why should you choose Bulkfollows?</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Why should you choose PayFollows?</h2>
           <p className="text-gray-300 mb-4">
             Bulkfollows offers its clients results-oriented services that last forever if you are looking for a YouTube SMM panel to increase YouTube watch time or you need YouTube views, likes or subscribers.
           </p>

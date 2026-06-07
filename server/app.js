@@ -134,7 +134,7 @@ async function registerRoutes() {
       supabaseAdminConfigured: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY),
     });
   });
-  app.get('/', (_req, res) => res.send('BulkFollows backend running'));
+  app.get('/', (_req, res) => res.send('PayFollows backend running'));
 
   // global error handler (should be last middleware)
   const { errorHandler } = await import('./lib/apiResponse.js');

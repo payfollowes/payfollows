@@ -32,13 +32,13 @@ const getAuthStorageKey = (url: string) => {
     const hostname = new URL(url).hostname;
     const projectRef = hostname.split('.')[0]?.replace(/[^a-z0-9-]/gi, '').toLowerCase();
     if (projectRef) {
-      return `bulkfollows.auth.${projectRef}`;
+      return `payfollows.auth.${projectRef}`;
     }
   } catch {
     // Ignore invalid URLs and fall back to the default storage key.
   }
 
-  return 'bulkfollows.auth.token';
+  return 'payfollows.auth.token';
 };
 
 const AUTH_STORAGE_KEY = getAuthStorageKey(supabaseUrl);

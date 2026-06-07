@@ -2,7 +2,7 @@
 <img width="1200" height="475" alt="GHBanner" src="/artifacts/qa/admin-dashboard.png" />
 </div>
 
-# BulkFollows SMM Panel
+# PayFollows SMM Panel
 
 A modern Social Media Marketing (SMM) reseller panel built with React, TypeScript, Supabase, and FastPay integration.
 
