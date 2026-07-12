@@ -1,36 +1,53 @@
 
 import React from 'react';
+import { BadgeCheck, BarChart3, ShieldCheck, Zap } from 'lucide-react';
 
 const benefitItems = [
-  { icon: '🛡️', title: 'Secure Payment SMM Panel', description: 'We accept payments through various methods like credit cards, PayPal, Payoneer, Skrill, Western Union, and more. Our payment gateway is secure and ensures that your money is safe.' },
-  { icon: '📊', title: 'SMM Panel with Real-Time Data', description: 'We provide real-time data and statistics about your orders and services. This helps you keep track of your social media growth and understand what\'s working for your brand.' },
-  { icon: '🏆', title: 'Highest Quality SMM Panel', description: 'Quality is our top priority. Our SMM services are 100% genuine, safe, and compliant with each social network\'s terms and services. We ensure that our services help enhance your online reputation.' },
-  { icon: '🚀', title: 'Fastest SMM Panel', description: 'Our panel is built to deliver results quickly. We understand that in the world of social media, timing is everything. That\'s why we ensure your orders are processed as fast as possible.' },
+  {
+    title: 'Secure payment flow',
+    description: 'Deposit, withdraw, and manage transactions with payment methods and guardrails that feel reliable and effortless.',
+    icon: ShieldCheck,
+  },
+  {
+    title: 'Live metrics',
+    description: 'Track orders, health, and growth in real time from one polished command center.',
+    icon: BarChart3,
+  },
+  {
+    title: 'Premium service quality',
+    description: 'Every package is designed to stay safe, consistent, and compliant with platform expectations.',
+    icon: BadgeCheck,
+  },
+  {
+    title: 'Rapid execution',
+    description: 'Fast processing and a clean workflow mean your orders move quickly without losing clarity.',
+    icon: Zap,
+  },
 ];
 
-const BenefitCard: React.FC<{ icon: string; title: string; description: string }> = ({ icon, title, description }) => (
-  <div className="bg-brand-container border border-brand-border rounded-3xl p-8 text-center flex flex-col items-center backdrop-blur-sm transform hover:-translate-y-2 transition-transform duration-300">
-    <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
-        <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-xl"></div>
-        <div className="relative w-20 h-20 bg-black/30 rounded-full flex items-center justify-center border-2 border-purple-500/30">
-            <span className="text-3xl">{icon}</span>
-        </div>
+const BenefitCard: React.FC<{ icon: React.ElementType; title: string; description: string }> = ({ icon: Icon, title, description }) => (
+  <div className="rounded-[24px] border border-white/10 bg-[rgba(20,18,30,0.65)] p-8 text-left shadow-[0_10px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-fuchsia-400/30">
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200">
+      <Icon className="h-6 w-6" />
     </div>
-    <h3 className="text-xl font-bold mb-4">{title}</h3>
-    <p className="text-gray-300 text-sm leading-relaxed">{description}</p>
+    <h3 className="mt-6 text-xl font-semibold text-white">{title}</h3>
+    <p className="mt-3 text-sm leading-7 text-slate-400">{description}</p>
   </div>
 );
 
 const Benefits: React.FC = () => {
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
-      <div className="container mx-auto text-center mb-12">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Benefits of Using PayFollows</h2>
-      </div>
-      <div className="container mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {benefitItems.map((item, index) => (
-          <BenefitCard key={index} {...item} />
-        ))}
+    <section id="benefits" className="px-4 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-300">Advantages</p>
+          <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">Why creators and resellers choose PayFollows.</h2>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {benefitItems.map((item, index) => (
+            <BenefitCard key={index} {...item} />
+          ))}
+        </div>
       </div>
     </section>
   );

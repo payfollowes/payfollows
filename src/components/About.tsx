@@ -1,63 +1,57 @@
-
 import React from 'react';
+import { ArrowRight, Compass, TrendingUp, ShieldCheck } from 'lucide-react';
 import aboutDashboardIllustration from '../assets/about-dashboard.svg';
 
 const About: React.FC = () => {
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
-      <div className="container mx-auto text-center mb-12">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">About PayFollows</h2>
-      </div>
-      <div className="container mx-auto grid md:grid-cols-2 gap-8">
-        <div className="bg-brand-container border border-brand-border rounded-3xl p-8 flex flex-col text-left">
-          <h3 className="text-2xl font-bold mb-4">World's Best Cheap & Easy Smm Panel</h3>
-          <p className="text-gray-300 mb-6">
-            PayFollows is a globally recognized platform offering top-notch SMM services. Whether you're in the United States, India, or Turkey, you can access our services anywhere, anytime. Our panel is designed to be user-friendly and cost-effective, providing the best value for your money.
-          </p>
-          <div className="mt-auto bg-black/30 rounded-2xl p-4 border border-brand-border flex-grow flex items-center justify-center">
-             <img
-               src={aboutDashboardIllustration}
-               alt="PayFollows Dashboard"
-               className="rounded-lg object-cover"
-               fetchpriority="low"
-               loading="lazy"
-               decoding="async"
-             />
-          </div>
+    <section id="panel" className="px-4 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-300">About the platform</p>
+          <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">A premium reseller control center built for speed and trust.</h2>
         </div>
-        <div className="bg-brand-container border border-brand-border rounded-3xl p-8 flex flex-col text-left">
-            <div className="bg-black/30 rounded-2xl p-6 border border-brand-border flex-grow flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-semibold">PayFollows</span>
-                    <div className="flex space-x-1">
-                        <span className="w-3 h-3 bg-gray-600 rounded-full"></span>
-                        <span className="w-3 h-3 bg-gray-600 rounded-full"></span>
-                        <span className="w-3 h-3 bg-gray-600 rounded-full"></span>
-                    </div>
-                </div>
-                <div className="bg-white/10 p-4 rounded-lg text-left text-sm space-y-3">
-                    <p>Views - Retention 1-2 Mins - Source</p>
-                    <div className="flex items-center space-x-4">
-                        <div className="w-4 h-4 rounded-full border-2 border-brand-purple bg-purple-500/30"></div>
-                        <p>Views</p>
-                        <button className="ml-auto bg-brand-accent text-white px-3 py-1 text-xs rounded-md">Buy Now</button>
-                    </div>
-                    <p>Followers [ Flag OF ]</p>
-                    <div className="flex items-center space-x-4">
-                        <div className="w-4 h-4 rounded-full border-2 border-brand-purple"></div>
-                        <p>Buy Followers</p>
-                        <button className="ml-auto bg-gray-500 text-white px-3 py-1 text-xs rounded-md">Resell Service</button>
-                    </div>
-                     <div className="flex items-center space-x-2 text-gray-300">
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>
-                        <span>Add to Favorite</span>
-                     </div>
-                </div>
+        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[28px] border border-white/10 bg-[rgba(20,18,30,0.65)] p-8 shadow-[0_10px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200">
+                <Compass className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-fuchsia-200">Global operations</p>
+                <p className="text-sm text-slate-400">Built for agencies, creators, and resellers</p>
+              </div>
             </div>
-          <h3 className="text-2xl font-bold mt-8 mb-4">Smm Reseller Panel</h3>
-          <p className="text-gray-300">
-            Our reseller panel allows influencers, marketing enthusiasts, and digital marketing agencies to buy our services at wholesale prices. Whether it's Twitter followers, Soundcloud likes, or YouTube views, you can resell them at a profit.
-          </p>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              PayFollows gives you a polished command center to manage services, balance, payments, and growth metrics. Every layer is designed to feel premium while staying practical for daily operations.
+            </p>
+            <div className="mt-8 space-y-3">
+              {[
+                'Fast access to top social service categories',
+                'Protected wallet and payment history flow',
+                'Clean dashboards for placement, delivery and support',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-slate-300">
+                  <ShieldCheck className="h-5 w-5 text-fuchsia-300" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+            <a href="/#/register" className="mt-8 inline-flex items-center gap-2 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-5 py-3 font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20">
+              Explore the panel <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+          <div className="relative rounded-[28px] border border-white/10 bg-[rgba(20,18,30,0.65)] p-4 shadow-[0_10px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+            <div className="absolute left-6 top-6 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 text-sm font-medium text-fuchsia-200">
+              Live dashboard
+            </div>
+            <img src={aboutDashboardIllustration} alt="PayFollows dashboard preview" className="mt-12 w-full rounded-[24px] border border-white/10 object-cover" />
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <TrendingUp className="h-5 w-5 text-fuchsia-300" /> Growth overview
+              </div>
+              <div className="text-sm font-semibold text-white">+24% momentum</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

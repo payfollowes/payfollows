@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { ArrowRight, Crown, Sparkles, ShieldCheck, PlayCircle, Lock } from 'lucide-react';
 import { authAPI } from '../lib/api';
+import aboutDashboardIllustration from '../assets/about-dashboard.svg';
 
 const Hero: React.FC = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -8,22 +10,19 @@ const Hero: React.FC = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const comparisonFeatures = [
-    { name: "Free Childpanel", payfollows: true, others: true },
-    { name: "Point for each $spend", payfollows: true, others: true },
-    { name: "Upto 10% Discount", payfollows: true, others: true },
-    { name: "Upto 15% Deposit Bonus", payfollows: true, others: true },
-    { name: "24/7 Support through ticket, Whatsapp, Telegram", payfollows: true, others: true },
+  const heroStats = [
+    { label: 'Instant flow', value: '24/7' },
+    { label: 'Orders moved', value: '140M+' },
+    { label: 'Avg. response', value: '< 2m' },
   ];
 
   const handleInputChange = (field: 'username' | 'password', value: string) => {
-    setCredentials(prev => ({ ...prev, [field]: value }));
+    setCredentials((prev) => ({ ...prev, [field]: value }));
     if (error) setError('');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!credentials.username.trim() || !credentials.password.trim()) {
       setError('Please enter both username and password');
       return;
@@ -33,11 +32,7 @@ const Hero: React.FC = () => {
     setError('');
 
     try {
-      await authAPI.signInWithCredentials(
-        credentials.username,
-        credentials.password,
-        '#/dashboard/new-order'
-      );
+      await authAPI.signInWithCredentials(credentials.username, credentials.password, '#/dashboard/new-order');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -58,99 +53,98 @@ const Hero: React.FC = () => {
   };
 
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
-      <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div className="flex flex-col gap-6">
-          <span className="self-start bg-purple-500/20 text-brand-light-purple px-4 py-1 rounded-full text-sm font-medium border border-purple-500/30">Smm Panel</span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">Welcome to PayFollows <br /> Smm Panel!</h1>
-          <p className="text-gray-300 max-w-lg">
-            In today's fast-changing digital world, businesses are using social media to connect with their target audience more effectively than ever. This has made Social Media Marketing (SMM) a powerful tool for marketers. One platform that stands out for providing SMM services is PayFollows.
+    <section id="hero" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 text-sm font-medium text-fuchsia-200">
+            <Crown className="h-4 w-4" /> Provider-grade dashboard experience
+          </div>
+          <h1 className="mt-6 text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+            Command your growth from a premium panel.
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300">
+            PayFollows blends a luxury dark-fantasy interface with real reseller workflows, instant orders, and live performance insights for digital creators and agencies.
           </p>
-          <div className="bg-brand-container border border-brand-border rounded-2xl p-6 flex flex-col gap-4 mt-4">
+          <div className="mt-7 flex flex-wrap gap-3">
+            <a href="/#/register" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#7E22CE] to-[#C026D3] px-6 py-3 font-semibold text-white shadow-[0_0_25px_rgba(168,85,247,0.3)] transition hover:scale-[1.03]">
+              Create account <ArrowRight className="h-4 w-4" />
+            </a>
+            <a href="/#/dashboard" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-6 py-3 font-semibold text-slate-200 transition hover:bg-white/20">
+              <PlayCircle className="h-4 w-4" /> View dashboard demo
+            </a>
+          </div>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {heroStats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-xl">
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="mt-1 text-sm text-slate-400">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-[24px] border border-white/10 bg-[rgba(20,18,30,0.65)] p-5 shadow-[0_10px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500 rounded-lg p-3 text-red-300 text-sm">
-                  {error}
+              {error && <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}</div>}
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="relative flex-1">
+                  <input type="text" placeholder="Username" value={credentials.username} onChange={(e) => handleInputChange('username', e.target.value)} disabled={isLoading} className="w-full rounded-2xl border border-white/10 bg-black/20 py-3 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-fuchsia-400/40 focus:ring-2 focus:ring-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-50" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
                 </div>
-              )}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative w-full">
-                  <input 
-                    type="text" 
-                    placeholder="Username" 
-                    value={credentials.username}
-                    onChange={(e) => handleInputChange('username', e.target.value)}
-                    disabled={isLoading}
-                    className="w-full bg-black/20 border border-brand-border rounded-lg p-3 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all" />
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
-                </div>
-                <div className="relative w-full">
-                  <input 
-                    type="password" 
-                    placeholder="Password" 
-                    value={credentials.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    disabled={isLoading}
-                    className="w-full bg-black/20 border border-brand-border rounded-lg p-3 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all" />
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                <div className="relative flex-1">
+                  <input type="password" placeholder="Password" value={credentials.password} onChange={(e) => handleInputChange('password', e.target.value)} disabled={isLoading} className="w-full rounded-2xl border border-white/10 bg-black/20 py-3 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-fuchsia-400/40 focus:ring-2 focus:ring-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-50" />
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 </div>
               </div>
-              <div className="flex justify-between items-center text-sm text-gray-400">
-                <label className="flex items-center gap-2 cursor-pointer hover:text-gray-300">
-                  <input 
-                    type="checkbox" 
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    disabled={isLoading}
-                    className="form-checkbox bg-black/20 border-brand-border rounded text-brand-purple focus:ring-brand-purple disabled:opacity-50" />
+              <div className="flex flex-col items-center justify-between gap-3 text-sm text-slate-400 sm:flex-row">
+                <label className="flex cursor-pointer items-center gap-2 transition hover:text-slate-200">
+                  <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} disabled={isLoading} className="h-4 w-4 rounded border-white/20 bg-black/20 text-fuchsia-500 focus:ring-fuchsia-500" />
                   <span>Remember me</span>
                 </label>
-                <a href="#/forgot-password" className="hover:text-white transition-colors">Forgot password?</a>
+                <a href="#/forgot-password" className="transition hover:text-white">Forgot password?</a>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 mt-2">
-                <button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-brand-accent to-brand-purple hover:opacity-90 transition-opacity text-white font-semibold p-3 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <span>{isLoading ? 'Signing in...' : 'Go to Login'}</span>
-                   {!isLoading && <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button type="submit" disabled={isLoading} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7E22CE] to-[#C026D3] px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(168,85,247,0.25)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60">
+                  {isLoading ? 'Signing in...' : 'Go to login'} <ArrowRight className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  disabled={googleLoading || isLoading}
-                  className="w-full bg-white/10 hover:bg-white/20 transition-colors text-white font-semibold p-3 rounded-lg flex items-center justify-center gap-2 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button type="button" onClick={handleGoogleLogin} disabled={googleLoading || isLoading} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.2-.9 2.3-1.9 3l3 2.3c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.4-.2-2H12z" />
                     <path fill="#34A853" d="M12 21c2.6 0 4.8-.9 6.4-2.5l-3-2.3c-.8.6-2 .9-3.4.9-2.6 0-4.8-1.8-5.6-4.1l-3.1 2.4C5 18.8 8.2 21 12 21z" />
                     <path fill="#4A90E2" d="M6.4 13c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2L3.3 6.6C2.5 8 2 9.4 2 11s.5 3 1.3 4.4L6.4 13z" />
                     <path fill="#FBBC05" d="M12 4.9c1.4 0 2.7.5 3.8 1.5l2.8-2.8C16.8 1.9 14.6 1 12 1 8.2 1 5 3.2 3.3 6.6L6.4 9c.8-2.3 3-4.1 5.6-4.1z" />
                   </svg>
-                  <span>{googleLoading ? 'Redirecting...' : 'Google Login'}</span>
+                  {googleLoading ? 'Redirecting...' : 'Google Login'}
                 </button>
               </div>
             </form>
-            <p className="text-center text-sm text-gray-400 mt-4">Do not have an account? <a href="/#/register" className="font-semibold text-brand-light-purple hover:text-white transition-colors">Sign up</a></p>
+            <p className="mt-4 text-center text-sm text-slate-400">Do not have an account? <a href="/#/register" className="font-semibold text-fuchsia-300 transition hover:text-white">Sign up</a></p>
           </div>
         </div>
 
-        <div className="bg-brand-container border border-brand-border rounded-3xl p-8 backdrop-blur-sm shadow-purple-glow">
-          <h3 className="text-2xl font-bold mb-6 text-center">PayFollows VS Others</h3>
-          <div className="flex justify-around bg-black/20 rounded-lg p-1 mb-6">
-            <button className="w-1/2 py-2.5 rounded-md bg-gradient-to-r from-brand-accent to-brand-purple text-white font-semibold text-sm">PayFollows</button>
-            <button className="w-1/2 py-2.5 rounded-md text-gray-300 font-semibold text-sm">Others Site</button>
-          </div>
-          <div className="flex flex-col gap-4">
-            {comparisonFeatures.map((feature, index) => (
-              <div key={index} className="flex justify-between items-center text-sm text-gray-300">
-                <span>{feature.name}</span>
-                <div className="flex items-center gap-6 sm:gap-16">
-                  <span className="text-green-400">{feature.payfollows ? '✓' : '✗'}</span>
-                  <span className="text-green-400">{feature.others ? '✓' : '✗'}</span>
+        <div className="relative">
+          <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-fuchsia-500/30 via-violet-500/20 to-transparent blur-3xl" />
+          <div className="relative rounded-[32px] border border-white/10 bg-[rgba(20,18,30,0.7)] p-3 shadow-[0_0_35px_rgba(168,85,247,0.25)] backdrop-blur-xl">
+            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Sparkles className="h-4 w-4 text-fuchsia-300" /> Live dashboard preview
+              </div>
+              <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
+                Secure
+              </div>
+            </div>
+            <img src={aboutDashboardIllustration} alt="PayFollows dashboard preview" className="mt-4 w-full rounded-[24px] border border-white/10 object-cover" />
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Reseller controls</p>
+                  <p className="text-sm text-slate-400">Track balance, services, and orders in one view</p>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
