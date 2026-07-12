@@ -1,63 +1,67 @@
-import React, { useState } from 'react';
-import { Play, MessageCircle, Radio, Music2, Send, Globe2 } from 'lucide-react';
 
-const servicesTabs = [
-  { name: 'Youtube', icon: Play },
-  { name: 'Twitter', icon: MessageCircle },
-  { name: 'Linkedin', icon: Globe2 },
-  { name: 'Telegram', icon: Send },
-  { name: 'Spotify', icon: Music2 },
-  { name: 'Soundcloud', icon: Radio },
-];
+import React, { useState } from 'react';
+
+const servicesTabs = ['Youtube', 'Twitter', 'Linkedin', 'Telegram', 'Spotify', 'Soundcloud'];
 
 const serviceContent = {
   Youtube: {
-    title: 'YouTube growth suite',
-    description: 'Launch views, likes, subscribers and shares from a focused delivery panel designed to support viral momentum.',
+    title: 'Youtube Smm Panel',
+    description: 'Want to skyrocket your YouTube channel\'s growth? Our YouTube SMM panel offers views, likes, subscribers, and shares from genuine accounts. Become an internet celebrity with our services. Users are constantly looking for fresh and appealing videos due to the constantly rising volume of videos submitted to YouTube.'
   },
   Twitter: {
-    title: 'Twitter reach engine',
-    description: 'Push visibility with followers, likes and retweets that keep your message circulating across the feed.',
+    title: 'Twitter Smm Panel',
+    description: 'Boost your Twitter presence with our targeted services. Get more followers, retweets, and likes to expand your reach and influence on the platform.'
   },
   Linkedin: {
-    title: 'LinkedIn authority flow',
-    description: 'Build network traction through profiles, company followers, and engagement that keeps your presence rising.',
+    title: 'Linkedin Smm Panel',
+    description: 'Enhance your professional network on LinkedIn. We provide services to increase your connections, post engagement, and company page followers.'
   },
   Telegram: {
-    title: 'Telegram community boost',
-    description: 'Grow communities with members, views and engagement that keep your channel active and trusted.',
+    title: 'Telegram Smm Panel',
+    description: 'Grow your Telegram channels and groups with our reliable services. Increase members, post views, and engagement to build a thriving community.'
   },
   Spotify: {
-    title: 'Spotify discovery layer',
-    description: 'Increase plays, followers and playlist reach with campaigns tailored for music discovery.',
+    title: 'Spotify Smm Panel',
+    description: 'Get your music heard on Spotify. Our services help you gain more plays, followers, and playlist placements to boost your artist profile.'
   },
   Soundcloud: {
-    title: 'SoundCloud momentum',
-    description: 'Spark new plays, likes and reposts to help each release reach a wider audience quickly.',
+    title: 'Soundcloud Smm Panel',
+    description: 'Promote your tracks on Soundcloud. We offer plays, likes, reposts, and comments to help you reach a wider audience and get discovered.'
   },
 };
 
 const Services: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Youtube');
-  const activeService = serviceContent[activeTab as keyof typeof serviceContent];
 
   return (
-    <section className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl rounded-[32px] border border-white/10 bg-[rgba(20,18,30,0.65)] p-8 shadow-[0_10px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-        <div className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-300">Service suite</p>
-          <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">Pick the channel that needs momentum.</h2>
-        </div>
-        <div className="flex flex-wrap justify-center gap-3">
-          {servicesTabs.map(({ name, icon: Icon }) => (
-            <button key={name} onClick={() => setActiveTab(name)} className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${activeTab === name ? 'bg-gradient-to-r from-[#7E22CE] to-[#C026D3] text-white shadow-[0_0_20px_rgba(168,85,247,0.25)]' : 'border border-white/10 bg-white/10 text-slate-300 hover:bg-white/20'}`}>
-              <Icon className="h-4 w-4" /> {name}
+    <section className="px-4 sm:px-6 lg:px-8 py-20">
+      <div className="container mx-auto text-center mb-12">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Smm Services</h2>
+        <p className="max-w-3xl mx-auto text-gray-300 mt-4">
+          Our wide range of SMM services covers all major social networks such as Soundcloud, Twitter, Spotify, Youtube, Linkedin, and Telegram. Here's what you can expect:
+        </p>
+      </div>
+      <div className="container mx-auto bg-brand-container border border-brand-border rounded-3xl p-8 backdrop-blur-sm">
+        <div className="flex flex-wrap justify-center gap-4 mb-8">
+          {servicesTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeTab === tab 
+                  ? 'bg-gradient-to-r from-brand-accent to-brand-purple text-white shadow-purple-glow-sm' 
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              {tab}
             </button>
           ))}
         </div>
-        <div className="mt-8 rounded-[24px] border border-white/10 bg-black/25 p-8 text-center">
-          <h3 className="text-2xl font-semibold text-white">{activeService.title}</h3>
-          <p className="mx-auto mt-3 max-w-3xl text-lg leading-8 text-slate-400">{activeService.description}</p>
+        <div className="text-center">
+          <h3 className="text-3xl font-bold mb-4">{serviceContent[activeTab as keyof typeof serviceContent].title}</h3>
+          <p className="max-w-3xl mx-auto text-gray-300">
+            {serviceContent[activeTab as keyof typeof serviceContent].description}
+          </p>
         </div>
       </div>
     </section>
