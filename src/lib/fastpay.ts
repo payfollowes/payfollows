@@ -43,7 +43,7 @@ class FastPayClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'X-Merchant-Id': this.merchantId,
         },
         body: JSON.stringify({
@@ -58,88 +58,81 @@ class FastPayClient {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create FastPay order');
+        throw new Error(data?.message || 'Failed to create FastPay order');
       }
 
       return {
         success: true,
-        orderId: data.order_id,
-        paymentUrl: data.payment_url,
-        transactionId: data.transaction_id,
-        message: data.message,
+        orderId: String(data?.order_id || data?.id || ''),
+        paymentUrl: String(data?.payment_url || data?.redirect_url || ''),
+        transactionId: data?.transaction_id || data?.txn_id || undefined,
+        message: data?.message,
       };
     } catch (error) {
-      console.error('FastPay API Error:', error);
+      console.error('[FastPay] createOrder failed:', error);
       throw error;
     }
   }
 
   async verifyPayment(transactionId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/payments/verify/${transactionId}`, {
+      const response = await fetch(`${this.baseUrl}/payments/verify/${encodeURIComponent(transactionId)}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'X-Merchant-Id': this.merchantId,
         },
       });
 
-      const data = await response.json();
-
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         return false;
       }
 
-      return data.status === 'completed' || data.status === 'success';
+      return data?.status === 'completed' || data?.status === 'success';
     } catch (error) {
-      console.error('FastPay Verification Error:', error);
+      console.error('[FastPay] verifyPayment failed:', error);
       return false;
     }
   }
 
   async getPaymentStatus(transactionId: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/payments/${transactionId}`, {
+      const response = await fetch(`${this.baseUrl}/payments/${encodeURIComponent(transactionId)}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'X-Merchant-Id': this.merchantId,
         },
       });
 
-      const data = await response.json();
-      return data;
+      return await response.json().catch(() => ({}));
     } catch (error) {
-      console.error('FastPay Status Error:', error);
+      console.error('[FastPay] getPaymentStatus failed:', error);
       throw error;
     }
   }
 
-  // New method for webhook handling
-  async handleWebhook(payload: any) {
-    // Implement webhook processing logic here
-    // For example, verify signature, update payment status, etc.
+  async handleWebhook(payload: Record<string, unknown>) {
+    return payload;
   }
 }
 
-// Initialize FastPay client
 export const getFastPayClient = (): FastPayClient => {
-  // When running server-side (Node), prefer process.env.FASTPAY_API_KEY and process.env.FASTPAY_MERCHANT_ID
   const isNode = typeof window === 'undefined';
   const merchantId = (isNode ? process.env.FASTPAY_MERCHANT_ID : import.meta.env.VITE_FASTPAY_MERCHANT_ID) || '';
-  // Never attempt to pull a private API key into the client bundle.
   const apiKey = (isNode ? process.env.FASTPAY_API_KEY : '') || '';
 
   if (!merchantId || !apiKey) {
     if (isNode && !apiKey) {
-      console.warn('FastPay private API key not configured in server environment. Ensure FASTPAY_API_KEY is set in server/.env.local or host env.');
+      console.warn('[FastPay] private API key not configured in server environment; set FASTPAY_API_KEY in server/.env.local or host env.');
     } else if (!isNode && apiKey) {
-      console.warn('Detected a FastPay API key in client env (Vite). Do NOT include private API keys in client builds. Use the public merchant ID and server-side calls for private actions.');
+      console.warn('[FastPay] detected a private FastPay key in a client bundle; keep it server-side only.');
     } else {
-      console.warn('FastPay credentials not configured');
+      console.warn('[FastPay] credentials not configured');
     }
   }
 

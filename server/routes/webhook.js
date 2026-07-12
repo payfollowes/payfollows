@@ -42,16 +42,19 @@ router.post(
   '/',
   asyncHandler(async (req, res) => {
     const payload = req.body || {};
-    const signature = req.headers['x-fastpay-signature'] || req.headers['x-signature'];
+    const rawSignature = req.headers['x-fastpay-signature'] || req.headers['x-signature'];
+    const signature = Array.isArray(rawSignature) ? rawSignature[0] : rawSignature;
     const secret = process.env.FASTPAY_WEBHOOK_SECRET;
 
-    // If a webhook secret is provided, attempt to verify HMAC-SHA256 signature
     if (secret && signature) {
-      const computed = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
-      if (computed !== signature) {
-        console.warn('Invalid FastPay webhook signature', { computed, signature });
+      const expected = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      if (expected !== signature) {
+        console.warn('[FastPay] invalid webhook signature', { expected, signature });
         return res.status(400).json(errorResponse('INVALID_SIGNATURE', 'Invalid signature'));
       }
+    } else if (secret) {
+      console.warn('[FastPay] webhook received without signature header');
+      return res.status(400).json(errorResponse('MISSING_SIGNATURE', 'Missing signature header'));
     }
 
     const providerTxnId = payload.transaction_id || payload.id || payload.txn_id || null;
@@ -69,7 +72,7 @@ router.post(
 
     const paymentRecord = await findPaymentRecord(paymentId, fastpayOrderId, providerTxnId);
     if (!paymentRecord) {
-      console.warn('FastPay webhook received for unknown payment', {
+      console.warn('[FastPay] webhook received for unknown payment', {
         paymentId,
         fastpayOrderId,
         providerTxnId,
@@ -77,6 +80,7 @@ router.post(
       return res.json(successResponse({ note: 'No matching payment record found.' }));
     }
 
+    const isIdempotent = paymentRecord.status === status;
     const mergedMetadata = {
       ...(paymentRecord.metadata && typeof paymentRecord.metadata === 'object' ? paymentRecord.metadata : {}),
       fastpay_webhook: payload,
@@ -121,8 +125,7 @@ router.post(
       }
     }
 
-    // FastPay expects a 200-ish response for success
-    return res.json(successResponse({ paymentId: updatedPayment.id, status }));
+    return res.json(successResponse({ paymentId: updatedPayment.id, status, idempotent: isIdempotent }));
   })
 );
 

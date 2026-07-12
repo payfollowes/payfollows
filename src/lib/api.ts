@@ -39,19 +39,13 @@ async function fetchProviderServiceLink(serviceId: string): Promise<ProviderServ
     );
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to resolve provider link: ${response.status} ${response.statusText}`
-      );
+      throw new Error(`Failed to resolve provider link: ${response.status} ${response.statusText}`);
     }
 
-    const payload = await response.json();
+    const payload = await response.json().catch(() => ({}));
     const providerLink = payload?.providerLink;
-    const providerId = String(
-      providerLink?.provider_id || providerLink?.providerId || ''
-    ).trim();
-    const providerServiceId = String(
-      providerLink?.provider_service_id || providerLink?.providerServiceId || ''
-    ).trim();
+    const providerId = String(providerLink?.provider_id || providerLink?.providerId || '').trim();
+    const providerServiceId = String(providerLink?.provider_service_id || providerLink?.providerServiceId || '').trim();
 
     if (!providerId || !providerServiceId) {
       return null;
@@ -106,7 +100,7 @@ async function getProviderServicesSnapshot() {
       throw new Error(`Failed to fetch provider services: ${response.status} ${response.statusText}`);
     }
 
-    const payload = await response.json();
+    const payload = await response.json().catch(() => ({}));
     const providerServices = Array.isArray(payload?.providerServices) ? payload.providerServices : [];
 
     providerServicesCache = providerServices;
@@ -278,68 +272,69 @@ export const authAPI = {
   },
 
   async signUp(email: string, password: string, username: string) {
-    const { data, error } = await runSupabaseQuery(
-      supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
+    try {
+      const { data, error } = await runSupabaseQuery(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              username,
+            },
           },
-        },
-      }),
-      'auth sign up'
-    );
-
-    if (error) throw error;
-
-    // Update username in profile
-    if (data.user) {
-      const { error: profileError } = await runSupabaseQuery(
-        supabase
-          .from('user_profiles')
-          .update({ username })
-          .eq('id', data.user.id),
-        'auth sign up profile update'
+        }),
+        'auth sign up'
       );
 
-      if (profileError) {
-        throw profileError;
-      }
-    }
+      if (error) throw error;
 
-    return data;
+      if (data.user) {
+        const { error: profileError } = await runSupabaseQuery(
+          supabase
+            .from('user_profiles')
+            .upsert({ id: data.user.id, email, username, role: 'user' }, { onConflict: 'id' }),
+          'auth sign up profile upsert'
+        );
+
+        if (profileError) {
+          console.warn('[authAPI] profile upsert failed after sign-up; continuing with auth response', profileError);
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[authAPI] signUp failed:', error);
+      throw error;
+    }
   },
 
   async signIn(email: string, password: string) {
-    const res = await runSupabaseQuery(
-      supabase.auth.signInWithPassword({
-        email,
-        password,
-      }),
-      'auth sign in'
-    );
+    try {
+      const res = await runSupabaseQuery(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        'auth sign in'
+      );
 
-    // supabase-js returns shape { data, error }
-    // Normalize and provide more actionable error messages for the UI and logs
-    // so callers can display useful diagnostics when auth fails (e.g. 400 responses).
-    // If there's an error object, attach status and details where available.
-    // Throw a plain Error to keep consumers simple.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyRes: any = res;
-    if (anyRes.error) {
-      const err = anyRes.error;
-      const status = err.status || (err.raw && err.raw.status) || undefined;
-      const message = err.message || err.msg || JSON.stringify(err);
-      const detail = anyRes?.error?.details || anyRes?.error?.hint || anyRes?.error?.message;
-      const full = status ? `(${status}) ${message}` : message;
-      const errObj = new Error(full + (detail ? ` — ${detail}` : ''));
-      // Attach original response for debugging if needed
-      (errObj as any).supabase = anyRes;
-      throw errObj;
+      const anyRes: any = res;
+      if (anyRes.error) {
+        const err = anyRes.error;
+        const status = err.status || (err.raw && err.raw.status) || undefined;
+        const message = err.message || err.msg || JSON.stringify(err);
+        const detail = anyRes?.error?.details || anyRes?.error?.hint || anyRes?.error?.message;
+        const full = status ? `(${status}) ${message}` : message;
+        const errObj = new Error(full + (detail ? ` — ${detail}` : ''));
+        (errObj as any).supabase = anyRes;
+        throw errObj;
+      }
+
+      return anyRes.data;
+    } catch (error) {
+      console.error('[authAPI] signIn failed:', error);
+      throw error;
     }
-
-    return anyRes.data;
   },
 
   async signOut() {
@@ -616,29 +611,33 @@ export const ordersAPI = {
 // Payments Functions
 export const paymentsAPI = {
   async createPayment(amount: number, paymentMethod: string) {
-    const user = await getAuthenticatedUser();
+    try {
+      const user = await getAuthenticatedUser();
+      const fee = amount * 0.02;
+      const total = amount + fee;
 
-    const fee = amount * 0.02; // 2% processing fee
-    const total = amount + fee;
+      const { data, error } = await runSupabaseQuery(
+        supabase
+          .from('payments')
+          .insert({
+            user_id: user.id,
+            amount,
+            fee,
+            total,
+            payment_method: paymentMethod,
+            payment_provider: 'fastpay',
+          })
+          .select()
+          .single(),
+        'create payment'
+      );
 
-    const { data, error } = await runSupabaseQuery(
-      supabase
-        .from('payments')
-        .insert({
-          user_id: user.id,
-          amount,
-          fee,
-          total,
-          payment_method: paymentMethod,
-          payment_provider: 'fastpay',
-        })
-        .select()
-        .single(),
-      'create payment'
-    );
-
-    if (error) throw error;
-    return data as Payment;
+      if (error) throw error;
+      return data as Payment;
+    } catch (error) {
+      console.error('[paymentsAPI] createPayment failed:', error);
+      throw error;
+    }
   },
 
   async getPayments() {
@@ -658,61 +657,65 @@ export const paymentsAPI = {
   },
 
   async updatePaymentStatus(paymentId: string, status: Payment['status'], transactionId?: string, fastpayOrderId?: string) {
-    const updateData: any = {
-      status,
-      updated_at: new Date().toISOString(),
-    };
+    try {
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
 
-    if (transactionId) {
-      updateData.transaction_id = transactionId;
-    }
+      if (transactionId) {
+        updateData.transaction_id = transactionId;
+      }
 
-    if (fastpayOrderId) {
-      updateData.fastpay_order_id = fastpayOrderId;
-    }
+      if (fastpayOrderId) {
+        updateData.fastpay_order_id = fastpayOrderId;
+      }
 
-    const { data, error } = await runSupabaseQuery(
-      supabase
-        .from('payments')
-        .update(updateData)
-        .eq('id', paymentId)
-        .select()
-        .single(),
-      'payment status update'
-    );
-
-    if (error) throw error;
-
-    // If payment completed, update user balance
-    if (status === 'completed') {
-      const payment = data as Payment;
-      const { data: profileData, error: profileError } = await runSupabaseQuery(
+      const { data, error } = await runSupabaseQuery(
         supabase
-          .from('user_profiles')
-          .select('balance')
-          .eq('id', payment.user_id)
+          .from('payments')
+          .update(updateData)
+          .eq('id', paymentId)
+          .select()
           .single(),
-        'payment profile lookup'
+        'payment status update'
       );
 
-      if (profileError) throw profileError;
+      if (error) throw error;
 
-      if (profileData) {
-        const { error: updateBalanceError } = await runSupabaseQuery(
+      if (status === 'completed') {
+        const payment = data as Payment;
+        const { data: profileData, error: profileError } = await runSupabaseQuery(
           supabase
             .from('user_profiles')
-            .update({
-              balance: profileData.balance + payment.amount,
-            })
-            .eq('id', payment.user_id),
-          'payment balance credit'
+            .select('balance')
+            .eq('id', payment.user_id)
+            .single(),
+          'payment profile lookup'
         );
 
-        if (updateBalanceError) throw updateBalanceError;
-      }
-    }
+        if (profileError) throw profileError;
 
-    return data as Payment;
+        if (profileData) {
+          const { error: updateBalanceError } = await runSupabaseQuery(
+            supabase
+              .from('user_profiles')
+              .update({
+                balance: profileData.balance + payment.amount,
+              })
+              .eq('id', payment.user_id),
+            'payment balance credit'
+          );
+
+          if (updateBalanceError) throw updateBalanceError;
+        }
+      }
+
+      return data as Payment;
+    } catch (error) {
+      console.error('[paymentsAPI] updatePaymentStatus failed:', error);
+      throw error;
+    }
   },
 };
 

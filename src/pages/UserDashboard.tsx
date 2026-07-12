@@ -61,7 +61,6 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout }) => {
             sidebar={<Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
             bottomNav={<MobileFooterNav />}
             navbar={<DashboardHeader user={user} onLogout={onLogout} onToggleSidebar={() => setSidebarOpen(true)} />}
-            bottomNav={<MobileFooterNav />}
         >
             <div className="space-y-4">
                 <ServerHealthBanner />

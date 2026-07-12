@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import { supabaseAdmin, supabaseAdminConfigured } from '../lib/supabaseServer.js';
 import { validateRequest, schemas } from '../lib/validation.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
@@ -38,6 +39,10 @@ router.post('/create-order', validateRequest(schemas.createOrderSchema), asyncHa
     notify_url: process.env.FASTPAY_WEBHOOK_URL || '/webhook/fastpay'
   };
 
+  const signature = process.env.FASTPAY_WEBHOOK_SECRET
+    ? crypto.createHmac('sha256', process.env.FASTPAY_WEBHOOK_SECRET).update(JSON.stringify(payload)).digest('hex')
+    : undefined;
+
   const fetchFn = (typeof fetch === 'function') ? fetch : null;
   if (!fetchFn) {
     console.error('Global fetch is not available in this Node.js runtime. Please run on Node 18+ or set up a polyfill.');
@@ -52,25 +57,26 @@ router.post('/create-order', validateRequest(schemas.createOrderSchema), asyncHa
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${FASTPAY_API_KEY}`,
       'X-Merchant-Id': FASTPAY_MERCHANT_ID,
+      ...(signature ? { 'X-FastPay-Signature': signature } : {}),
     },
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error('FastPay API error:', data);
     return res.status(502).json(
       errorResponse(
         'FASTPAY_API_ERROR',
         'Payment provider returned error',
-        { message: data.message || data.error, code: data.code }
+        { message: data?.message || data?.error, code: data?.code }
       )
     );
   }
 
-  const orderId = data.order_id || data.id || null;
-  const transactionId = data.transaction_id || data.txn_id || null;
-  const paymentUrl = data.payment_url || data.redirect_url || null;
+  const orderId = data?.order_id || data?.id || null;
+  const transactionId = data?.transaction_id || data?.txn_id || null;
+  const paymentUrl = data?.payment_url || data?.redirect_url || null;
 
   // Update payment record with explicit error handling
   const { error: updateError } = await supabaseAdmin.from('payments').update({

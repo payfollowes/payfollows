@@ -8,6 +8,7 @@ const supabaseAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   '';
+const isBrowser = typeof window !== 'undefined';
 const FETCH_TIMEOUT_MS = 15_000;
 const LEGACY_AUTH_STORAGE_KEY = 'supabase.auth.token';
 const AUTH_COOKIE_SESSION_ENDPOINT = '/api/auth/session';
@@ -16,7 +17,7 @@ const AUTH_COOKIE_SYNC_FAILURE_BACKOFF_MS = 60_000;
 const SHOULD_LOG_STORAGE = Boolean(import.meta.env.DEV);
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL and Anon Key must be set in environment variables');
+  console.warn('[Supabase] URL and anon key must be set in Vite environment variables');
 }
 
 type StoredSupabaseSession = {
@@ -219,11 +220,15 @@ const customStorage = {
   },
 };
 
-if (typeof window !== 'undefined') {
+if (isBrowser) {
   const bootStoredSession = readStoredSessionValue(AUTH_STORAGE_KEY);
   if (bootStoredSession) {
     queueMicrotask(() => {
-      syncAuthCookieMirror(bootStoredSession);
+      try {
+        syncAuthCookieMirror(bootStoredSession);
+      } catch (error) {
+        console.warn('[Supabase] Failed to mirror session cookie on startup', error);
+      }
     });
   }
 }

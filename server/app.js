@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 
 // Load production defaults first, then local overrides and default envs.
 dotenv.config({ path: '.env.production' });
@@ -13,6 +14,16 @@ const app = express();
 
 app.set('trust proxy', 1);
 
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' },
+});
+
+app.use(limiter);
+
 // Explicit CORS configuration for Vercel
 const corsOptions = {
   origin: true, // Allow any origin (or configure specific domains in production)
@@ -23,7 +34,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 app.use((req, res, next) => {
   const isServerRoute =
