@@ -62,7 +62,6 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
                 <div className="text-center mb-8">
                     <Logo />
                     <h1 className="text-2xl font-bold mt-4">Admin Panel Login</h1>
-                     <p className="text-sm text-gray-400">Use admin@example.com to log in.</p>
                 </div>
                 <form className="space-y-6" onSubmit={handleLogin}>
                     {error && <p className="text-sm text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</p>}

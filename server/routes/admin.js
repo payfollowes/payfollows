@@ -157,6 +157,101 @@ const extractCompletionTimeHours = (providerService) => {
   );
 };
 
+// Provider SMM APIs (action=services) do not expose per-service delivery times.
+// CasperSMM (and panels on the same codebase) publish them only on their public
+// /services page, so the sync scrapes that page to capture the real times.
+const PROVIDER_TIME_PAGE_TIMEOUT_MS = 25000;
+const PROVIDER_TIME_CELL_PATTERN = /(?:^|\s)\d+(?:\.\d+)?\s*(?:min(?:ute)?s?|hrs?|hours?|days?|weeks?|seconds?)\b/i;
+
+const fetchProviderCompletionTimes = async (apiUrl) => {
+  let pageUrl;
+  try {
+    const parsed = new URL(apiUrl);
+    parsed.pathname = '/services';
+    parsed.search = '';
+    parsed.hash = '';
+    pageUrl = parsed.toString();
+  } catch (error) {
+    console.warn('[sync-services] Invalid provider API URL for time scrape:', apiUrl, error?.message || error);
+    return null;
+  }
+
+  let html;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROVIDER_TIME_PAGE_TIMEOUT_MS);
+    const response = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    html = await response.text();
+  } catch (error) {
+    console.warn('[sync-services] Provider completion-time page fetch failed:', pageUrl, error?.message || error);
+    return null;
+  }
+
+  // Each service row is <td>id</td> <td>name</td> ... <td>57 minutes</td> ... <td>View</td>.
+  // The name cell is skipped because names embed refill periods like "30 Days ♻️".
+  const completionTimes = new Map(); // providerServiceId -> { hours, text }
+  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const cellPattern = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+  let rowMatch;
+  while ((rowMatch = rowPattern.exec(html)) !== null) {
+    const rowHtml = rowMatch[1];
+    if (!/<td/i.test(rowHtml)) continue;
+
+    const cells = [];
+    cellPattern.lastIndex = 0;
+    let cellMatch;
+    while ((cellMatch = cellPattern.exec(rowHtml)) !== null) {
+      cells.push(
+        String(cellMatch[1])
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;|&#160;|\u00a0/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      );
+    }
+    if (cells.length < 2 || !/^\d+$/.test(cells[0])) continue;
+
+    const timeCell = cells.slice(2).find((cell) => PROVIDER_TIME_CELL_PATTERN.test(cell));
+    if (!timeCell) continue;
+    const hours = parseDurationTextToHours(timeCell);
+    if (!hours) continue;
+    completionTimes.set(cells[0], { hours, text: timeCell });
+  }
+
+  return completionTimes;
+};
+
+// The completion-time fields on provider_services (completion_time_text,
+// completion_time_override, completion_time_override_hours) only exist once
+// migration 20260906_add_provider_completion_time_fields.sql has been applied.
+// Probe instead of assuming, so the sync keeps working (hours-only) before then.
+let providerServicesTimeTextProbe = { at: 0, available: false };
+const providerServicesHasTimeTextColumn = async () => {
+  if (Date.now() - providerServicesTimeTextProbe.at < 5 * 60 * 1000) {
+    return providerServicesTimeTextProbe.available;
+  }
+  let available = false;
+  try {
+    const { error } = await supabaseAdmin
+      .from('provider_services')
+      .select('completion_time_text, completion_time_override')
+      .limit(1);
+    available = !error;
+  } catch (error) {
+    console.warn('[sync-services] completion-time fields probe failed:', error?.message || error);
+    available = false;
+  }
+  providerServicesTimeTextProbe = { at: Date.now(), available };
+  return available;
+};
+
 const invalidateServiceCaches = () => {
   invalidateProviderServicesCache();
   globalCache.invalidate('public:services');
@@ -295,11 +390,38 @@ const computeMarginPercent = (providerRate, ourRate) => {
   return Number((((sell - base) / base) * 100).toFixed(2));
 };
 
-const extractProviderServiceIdFromDescription = (description) => {
-  const text = String(description || '');
-  const match = text.match(/Provider Service ID:\s*([^|]+)/i);
-  return match ? String(match[1]).trim() : '';
-};
+const PAGED_QUERY_SIZE = 1000;
+const PAGED_QUERY_MAX_ROWS = 30000;
+
+// All catalog service ids currently owned by a provider, via the provider_services join table.
+async function fetchServiceIdsOwnedByProvider(providerId) {
+  const rows = [];
+  for (let offset = 0; offset < PAGED_QUERY_MAX_ROWS; offset += PAGED_QUERY_SIZE) {
+    const { data, error } = await supabaseAdmin
+      .from('provider_services')
+      .select('service_id')
+      .eq('provider_id', providerId)
+      .not('service_id', 'is', null)
+      .range(offset, offset + PAGED_QUERY_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGED_QUERY_SIZE) break;
+  }
+  return Array.from(new Set(rows.map((row) => String(row.service_id).trim()).filter(Boolean)));
+}
+
+// Sync names catalog rows `${provider_service_id} - ${provider service name}`, so legacy
+// mappings saved without service_id can be re-linked by that prefix (no description parsing).
+async function findServiceIdByProviderServiceId(providerServiceId) {
+  const escaped = String(providerServiceId || '').replace(/[%_]/g, (ch) => `\\${ch}`);
+  const { data, error } = await supabaseAdmin
+    .from('services')
+    .select('id')
+    .ilike('name', `${escaped} - %`)
+    .limit(1);
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0 ? data[0].id : null;
+}
 
 const recomputeProviderServiceRates = async ({ providerId = null } = {}) => {
   const baseQuery = supabaseAdmin
@@ -467,6 +589,60 @@ router.get(
   })
 );
 
+// POST /api/admin/users/:id/delete - Permanently delete an account (profile + auth.users row).
+// The client-side RLS delete removes only the user_profiles row and leaves an orphaned login
+// behind, so this endpoint uses the service role to delete the auth.users row as well, which
+// cascades to the profile, orders, payments, tickets, etc.
+router.post(
+  '/users/:id/delete',
+  asyncHandler(async (req, res) => {
+    if (!supabaseAdminConfigured || !supabaseAdmin) {
+      return res.status(503).json(errorResponse('SUPABASE_SERVICE_ROLE_KEY is missing on the server.'));
+    }
+
+    // Verify the caller is an authenticated admin (service-role operations must never be
+    // reachable by regular users through the app).
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    const parts = String(authHeader || '').split(' ');
+    const token = parts.length === 2 && parts[0] === 'Bearer' ? parts[1] : '';
+    if (!token) {
+      return res.status(401).json(errorResponse('MISSING_TOKEN', 'Missing session token (Authorization header)'));
+    }
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData || !userData.user) {
+      return res.status(401).json(errorResponse('INVALID_TOKEN', 'Invalid token or unable to fetch user from token'));
+    }
+    const callerId = userData.user.id;
+
+    const { data: callerProfile, error: callerProfileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', callerId)
+      .maybeSingle();
+    if (callerProfileError || !callerProfile || callerProfile.role !== 'admin') {
+      return res.status(403).json(errorResponse('FORBIDDEN', 'Admin role required to delete users'));
+    }
+
+    const targetUserId = String(req.params.id || '').trim();
+    if (!targetUserId) {
+      return res.status(400).json(errorResponse('MISSING_USER_ID', 'Missing user id'));
+    }
+    if (targetUserId === callerId) {
+      return res.status(400).json(errorResponse('SELF_DELETE', 'You cannot delete your own account.'));
+    }
+
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+    if (deleteError) {
+      console.error('[admin] Failed to delete user:', deleteError);
+      return res.status(500).json(errorResponse('USER_DELETE_FAILED', deleteError.message || 'Failed to delete user'));
+    }
+
+    console.log('[admin] User deleted:', targetUserId, 'by', callerId);
+    return res.json(successResponse({ deleted: true }));
+  })
+);
+
 // POST /api/admin/test-provider - Test provider API connection (DaoSMM Format)
 router.post(
   '/test-provider',
@@ -620,6 +796,14 @@ router.post(
 
     console.log('[sync-services] Provider found:', provider.id);
 
+    // The provider API has no delivery-time field; capture the real times from the
+    // provider's public services page in parallel with the API fetch below.
+    const completionTimesPromise = fetchProviderCompletionTimes(provider.api_url)
+      .catch((error) => {
+        console.warn('[sync-services] Completion-time scrape failed:', error?.message || error);
+        return null;
+      });
+
     // Call DaoSMM API to get services
     let servicesUrl;
     try {
@@ -701,6 +885,39 @@ router.post(
     let clampedRateCount = 0;
     let clampedQuantityCount = 0;
 
+    const completionTimesMap = await completionTimesPromise;
+    if (completionTimesMap) {
+      console.log('[sync-services] Provider completion times parsed:', completionTimesMap.size, 'of', services.length, 'services');
+    } else {
+      console.log('[sync-services] No provider completion times available (page unavailable or no published speeds).');
+    }
+
+    const hasTimeTextColumn = await providerServicesHasTimeTextColumn();
+
+    // Preserve admin-set manual completion-time overrides across the
+    // delete/re-insert of provider_services below (they would otherwise be wiped).
+    const existingOverrides = new Map(); // provider_service_id -> { text, hours }
+    if (hasTimeTextColumn) {
+      try {
+        const { data: overrideRows, error: overrideError } = await supabaseAdmin
+          .from('provider_services')
+          .select('provider_service_id, completion_time_text, completion_time_override_hours')
+          .eq('provider_id', provider_id)
+          .eq('completion_time_override', true);
+        if (!overrideError) {
+          (overrideRows || []).forEach((row) => {
+            existingOverrides.set(String(row.provider_service_id), {
+              text: row.completion_time_text ?? null,
+              hours: row.completion_time_override_hours ?? null,
+            });
+          });
+          console.log('[sync-services] Preserved manual completion-time overrides:', existingOverrides.size);
+        }
+      } catch (error) {
+        console.warn('[sync-services] Failed to load completion-time overrides:', error?.message || error);
+      }
+    }
+
     let providerDefaultRule = null;
     try {
       const { data: ruleData } = await supabaseAdmin
@@ -737,7 +954,9 @@ router.post(
       const rawProviderRate = toNumber(pickFirst(svc.rate, svc.price), 0);
       const rawMinQuantity = toInteger(pickFirst(svc.min, svc.min_quantity), 1);
       const rawMaxQuantity = toInteger(pickFirst(svc.max, svc.max_quantity), 10000);
-      const completionTime = extractCompletionTimeHours(svc);
+      const manualOverride = existingOverrides.get(String(providerServiceId));
+      const scrapedTime = completionTimesMap?.get(String(providerServiceId));
+      const completionTime = manualOverride?.hours ?? scrapedTime?.hours ?? extractCompletionTimeHours(svc);
       const providerRate = clampDecimal10_2(rawProviderRate, 0);
       const effectiveMarkup = providerDefaultRule
         ? applyMarginToRate(providerRate, {
@@ -770,6 +989,9 @@ router.post(
         minQuantity,
         maxQuantity: Math.max(maxQuantity, minQuantity),
         completionTime,
+        completionTimeText: manualOverride?.text ?? scrapedTime?.text ?? null,
+        completionTimeOverride: Boolean(manualOverride),
+        completionTimeOverrideHours: manualOverride?.hours ?? null,
       };
     });
 
@@ -780,30 +1002,31 @@ router.post(
       });
     }
 
-    // Upsert platform services first so provider_services can reference service_id
+    // Remember which catalog rows this provider previously owned (via provider_services) so that
+    // rows whose provider entry disappears after this sync can be deactivated. Ownership lives in
+    // the provider_services join table, never in the customer-facing services.description.
+    let previouslyOwnedServiceIds = [];
+    if (shouldReplaceExisting) {
+      previouslyOwnedServiceIds = await fetchServiceIdsOwnedByProvider(provider_id);
+      console.log('[sync-services] Previously owned service rows:', previouslyOwnedServiceIds.length);
+    }
+
+    // Upsert platform services first so provider_services can reference service_id.
+    // Never append internal provider metadata to description - it is customer-visible. Linkage is
+    // stored in provider_services.service_id only. Zero-priced services are kept but hidden
+    // (inactive) until an admin sets a resell price.
     const serviceUpserts = normalizedServices.map((item) => ({
       name: item.serviceName,
       category: item.category,
-      description: [
-        String(item.description || '').trim(),
-        `Provider ID: ${provider_id} | Provider Service ID: ${item.providerServiceId} | Provider Rate: ${item.providerRate} | Min: ${item.minQuantity} | Max: ${item.maxQuantity}`,
-      ].filter(Boolean).join('\n\n'),
+      description: String(item.description || '').trim() || null,
       rate_per_1000: item.ourRate,
       min_quantity: item.minQuantity,
       max_quantity: item.maxQuantity,
       completion_time: item.completionTime,
-      status: 'active',
+      status: item.providerRate > 0 ? 'active' : 'inactive',
     }));
 
     let serviceIdByName = new Map();
-
-    // Mark prior synced services for this provider as inactive so old names don't linger.
-    if (shouldReplaceExisting) {
-      await supabaseAdmin
-        .from('services')
-        .update({ status: 'inactive', updated_at: new Date().toISOString() })
-        .ilike('description', `%Provider ID: ${provider_id}%`);
-    }
 
     // Avoid Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time"
     // by deduping same-name rows inside each upsert batch.
@@ -967,7 +1190,15 @@ router.post(
           our_rate: ourRate,
           min_quantity: minQty,
           max_quantity: maxQty,
-          status: 'active',
+          status: providerRate > 0 ? 'active' : 'inactive',
+          ...(hasTimeTextColumn
+            ? {
+                completion_time_text: item.completionTimeText ?? null,
+                completion_time_override: Boolean(item.completionTimeOverride),
+                completion_time_override_hours:
+                  item.completionTimeOverride ? item.completionTimeOverrideHours ?? null : null,
+              }
+            : {}),
         };
       })
       .filter(Boolean);
@@ -1062,6 +1293,40 @@ router.post(
       }
     }
 
+    // Deactivate catalog rows this provider used to own that are no longer part of the sync,
+    // unless another provider still references them (multi-provider safety).
+    if (shouldReplaceExisting && previouslyOwnedServiceIds.length > 0) {
+      const currentServiceIds = new Set(
+        dedupedMappings
+          .map((mapping) => String(mapping.service_id || '').trim())
+          .filter(Boolean)
+      );
+      const staleIds = previouslyOwnedServiceIds.filter((id) => !currentServiceIds.has(id));
+
+      const STALE_CHUNK_SIZE = 200;
+      for (let i = 0; i < staleIds.length; i += STALE_CHUNK_SIZE) {
+        const chunk = staleIds.slice(i, i + STALE_CHUNK_SIZE);
+        const { data: stillMapped } = await supabaseAdmin
+          .from('provider_services')
+          .select('service_id')
+          .in('service_id', chunk);
+        const stillMappedIds = new Set((stillMapped || []).map((row) => String(row.service_id)));
+        const toDeactivate = chunk.filter((id) => !stillMappedIds.has(id));
+
+        if (toDeactivate.length === 0) continue;
+        const { error: deactivateError } = await supabaseAdmin
+          .from('services')
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
+          .in('id', toDeactivate);
+        if (deactivateError) {
+          console.warn('[sync-services] Failed to deactivate stale service rows:', deactivateError);
+        }
+      }
+      if (staleIds.length > 0) {
+        console.log('[sync-services] Deactivated stale service rows:', staleIds.length);
+      }
+    }
+
     await supabaseAdmin
       .from('providers')
       .update({ last_sync: new Date().toISOString() })
@@ -1113,30 +1378,16 @@ router.get(
     const { data: orphanMappings } = await orphanQuery;
 
     if (orphanMappings && orphanMappings.length > 0) {
-      const { data: systemServices } = await supabaseAdmin
-        .from('services')
-        .select('id, description')
-        .limit(10000);
-
-      const serviceIdByProviderServiceId = new Map();
-      (systemServices || []).forEach((service) => {
-        const description = String(service.description || '');
-        const match = description.match(/Provider Service ID:\s*([^|]+)/i);
-        if (!match) return;
-        const providerServiceId = String(match[1]).trim();
-        if (!providerServiceId) return;
-        if (!serviceIdByProviderServiceId.has(providerServiceId)) {
-          serviceIdByProviderServiceId.set(providerServiceId, service.id);
-        }
-      });
-
       for (const orphan of orphanMappings) {
-        const linkedServiceId = serviceIdByProviderServiceId.get(String(orphan.provider_service_id || '').trim());
+        const linkedServiceId = await findServiceIdByProviderServiceId(orphan.provider_service_id);
         if (!linkedServiceId) continue;
-        await supabaseAdmin
+        const { error: repairError } = await supabaseAdmin
           .from('provider_services')
           .update({ service_id: linkedServiceId, updated_at: new Date().toISOString() })
           .eq('id', orphan.id);
+        if (repairError) {
+          console.warn('[provider-services] Failed to repair orphan mapping:', repairError);
+        }
       }
     }
 
@@ -1201,31 +1452,6 @@ router.get(
       services: row.service_id ? (serviceById.get(String(row.service_id).trim()) || null) : null,
     }));
 
-    // Fallback mapping when service_id is broken/legacy by reading provider service id from service descriptions.
-    const unresolvedRows = mergedRows.filter((row) => !row.services);
-    if (unresolvedRows.length > 0) {
-      const { data: allServicesForFallback } = await supabaseAdmin
-        .from('services')
-        .select('id, name, category, status, description')
-        .limit(20000);
-
-      const fallbackByProviderServiceId = new Map();
-      (allServicesForFallback || []).forEach((service) => {
-        const description = String(service.description || '');
-        const match = description.match(/Provider Service ID:\s*([^|]+)/i);
-        if (!match) return;
-        const providerServiceId = String(match[1]).trim();
-        if (!providerServiceId || fallbackByProviderServiceId.has(providerServiceId)) return;
-        fallbackByProviderServiceId.set(providerServiceId, service);
-      });
-
-      unresolvedRows.forEach((row) => {
-        const fallbackService = fallbackByProviderServiceId.get(String(row.provider_service_id || '').trim());
-        if (!fallbackService) return;
-        row.services = fallbackService;
-      });
-    }
-
     const filtered = category
       ? mergedRows.filter((row) => row?.services?.category === category)
       : mergedRows;
@@ -1259,6 +1485,9 @@ router.patch(
         service_name,
         service_category,
         service_status,
+        completion_time_override,
+        completion_time_hours,
+        completion_time_text,
       } = req.body || {};
 
     const mappingUpdates = {};
@@ -1268,6 +1497,44 @@ router.patch(
     if (max_quantity !== undefined) mappingUpdates.max_quantity = toInteger(max_quantity, 1);
     if (status !== undefined) mappingUpdates.status = String(status);
     mappingUpdates.updated_at = new Date().toISOString();
+
+    // Manual completion-time override. Requires the completion-time fields migration;
+    // probe so the admin gets a clear message instead of a PostgREST column error.
+    const timeOverrideRequested =
+      completion_time_override !== undefined ||
+      completion_time_hours !== undefined ||
+      completion_time_text !== undefined;
+    let timeOverrideHours = null;
+    if (timeOverrideRequested) {
+      const hasTimeColumns = await providerServicesHasTimeTextColumn();
+      if (!hasTimeColumns) {
+        return res.status(400).json(errorResponse(
+          'MIGRATION_REQUIRED',
+          'Apply migration supabase/migrations/20260906_add_provider_completion_time_fields.sql to set manual completion times.'
+        ));
+      }
+
+      if (completion_time_override === true) {
+        const hours = toInteger(completion_time_hours, 0);
+        if (hours <= 0) {
+          return res.status(400).json(errorResponse('INVALID_COMPLETION_TIME', 'completion_time_hours must be a positive number of hours.'));
+        }
+        timeOverrideHours = hours;
+        mappingUpdates.completion_time_override = true;
+        mappingUpdates.completion_time_override_hours = hours;
+        if (completion_time_text !== undefined) {
+          mappingUpdates.completion_time_text = String(completion_time_text).trim() || null;
+        }
+      } else if (completion_time_override === false) {
+        // Clear the manual override; the next provider sync re-fills from the provider.
+        mappingUpdates.completion_time_override = false;
+        mappingUpdates.completion_time_override_hours = null;
+        mappingUpdates.completion_time_text = null;
+      } else if (completion_time_text !== undefined) {
+        // Label-only edit (e.g. correcting a scraped label) without touching the override state.
+        mappingUpdates.completion_time_text = String(completion_time_text).trim() || null;
+      }
+    }
 
     const { data: updatedMapping, error: mappingError } = await supabaseAdmin
       .from('provider_services')
@@ -1290,7 +1557,8 @@ router.patch(
       service_status !== undefined ||
       min_quantity !== undefined ||
       max_quantity !== undefined ||
-      our_rate !== undefined
+      our_rate !== undefined ||
+      timeOverrideHours !== null
     ) {
       const serviceUpdates = {};
       if (service_name !== undefined) serviceUpdates.name = String(service_name).trim();
@@ -1299,6 +1567,7 @@ router.patch(
       if (min_quantity !== undefined) serviceUpdates.min_quantity = toInteger(min_quantity, 1);
       if (max_quantity !== undefined) serviceUpdates.max_quantity = toInteger(max_quantity, 1);
       if (our_rate !== undefined) serviceUpdates.rate_per_1000 = toNumber(our_rate, 0);
+      if (timeOverrideHours !== null) serviceUpdates.completion_time = timeOverrideHours;
       serviceUpdates.updated_at = new Date().toISOString();
 
       const { error: serviceError } = await supabaseAdmin
@@ -1380,18 +1649,10 @@ router.post('/provider-services/filter-categories', async (req, res) => {
     }
 
     const serviceById = new Map((servicesData || []).map((svc) => [String(svc.id), svc]));
-    const serviceByProviderServiceId = new Map();
-    (servicesData || []).forEach((svc) => {
-      const providerServiceId = extractProviderServiceIdFromDescription(svc.description);
-      if (providerServiceId && !serviceByProviderServiceId.has(providerServiceId)) {
-        serviceByProviderServiceId.set(providerServiceId, svc);
-      }
-    });
 
     const shouldKeep = (row) => {
       const byId = row.service_id ? serviceById.get(String(row.service_id)) : null;
-      const byProviderServiceId = serviceByProviderServiceId.get(String(row.provider_service_id || '').trim()) || null;
-      const categoryValue = String(byId?.category || byProviderServiceId?.category || '').toLowerCase();
+      const categoryValue = String(byId?.category || '').toLowerCase();
       if (!categoryValue) return false;
       return normalizedCategoryFilter.some((needle) => categoryValue.includes(needle));
     };
@@ -2264,5 +2525,78 @@ router.patch('/provider-quality-ratings/:id', async (req, res) => {
     return res.status(serverError.status).json({ success: false, message: serverError.message });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Scheduled provider re-sync
+// Re-runs the full provider service sync periodically so newly published
+// provider completion times (and catalog changes) are picked up automatically.
+// Interval in hours is configurable via PROVIDER_SYNC_INTERVAL_HOURS (default 6).
+// ---------------------------------------------------------------------------
+const SCHEDULED_SYNC_INTERVAL_MS =
+  (Number(process.env.PROVIDER_SYNC_INTERVAL_HOURS) || 6) * 60 * 60 * 1000;
+
+let scheduledSyncRunning = false;
+
+const runScheduledProviderSync = async () => {
+  if (scheduledSyncRunning) return;
+  scheduledSyncRunning = true;
+  const startedAt = Date.now();
+  try {
+    const { data: providers, error } = await supabaseAdmin
+      .from('providers')
+      .select('id, api_url, api_key, status')
+      .eq('status', 'active');
+    if (error || !providers?.length) {
+      console.warn('[sync-scheduler] No active providers to sync:', error?.message || 'none found');
+      return;
+    }
+
+    const baseUrl = `http://127.0.0.1:${process.env.PORT || 4000}`;
+    for (const provider of providers) {
+      if (!provider.api_key || !provider.api_url) continue;
+      try {
+        const response = await fetch(`${baseUrl}/api/admin/sync-provider-services`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider_id: provider.id, replace_existing: true }),
+          signal: AbortSignal.timeout(300000),
+        });
+        const payload = await response.json().catch(() => null);
+        console.log('[sync-scheduler] Provider sync finished:', provider.id, {
+          status: response.status,
+          synced: payload?.synced_count ?? payload?.count ?? 0,
+          ok: Boolean(payload?.success),
+        });
+      } catch (error) {
+        console.warn('[sync-scheduler] Provider sync failed:', provider.id, error?.message || error);
+      }
+    }
+    console.log('[sync-scheduler] Cycle complete in', ((Date.now() - startedAt) / 1000).toFixed(1) + 's');
+  } catch (error) {
+    console.warn('[sync-scheduler] Unexpected error:', error?.message || error);
+  } finally {
+    scheduledSyncRunning = false;
+  }
+};
+
+/**
+ * Start the periodic provider re-sync. Called once by app.js after routes are
+ * registered. Skipped in test/CI and serverless (VERCEL) contexts.
+ */
+const startProviderSyncScheduler = () => {
+  if (process.env.VERCEL || process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return;
+  }
+  setInterval(() => {
+    void runScheduledProviderSync();
+  }, SCHEDULED_SYNC_INTERVAL_MS);
+  console.log(
+    '[sync-scheduler] Provider re-sync scheduled every',
+    (SCHEDULED_SYNC_INTERVAL_MS / 3600000).toFixed(1),
+    'hours'
+  );
+};
+
+export { startProviderSyncScheduler };
 
 export default router;

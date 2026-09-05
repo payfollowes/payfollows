@@ -17,17 +17,6 @@ export interface ProviderServiceLink {
   providerServiceId: string;
 }
 
-function extractProviderLinkFromDescription(description: string | null | undefined): ProviderServiceLink | null {
-  const text = String(description || '');
-  const providerIdMatch = text.match(/Provider ID:\s*([^|]+)/i);
-  const providerServiceIdMatch = text.match(/Provider Service ID:\s*([^|]+)/i);
-  const providerId = providerIdMatch ? String(providerIdMatch[1]).trim() : '';
-  const providerServiceId = providerServiceIdMatch ? String(providerServiceIdMatch[1]).trim() : '';
-
-  if (!providerId || !providerServiceId) return null;
-  return { providerId, providerServiceId };
-}
-
 async function fetchProviderServiceLink(serviceId: string): Promise<ProviderServiceLink | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PROVIDER_SERVICE_LINK_TIMEOUT_MS);
@@ -129,6 +118,7 @@ export interface UserProfile {
   email: string;
   api_key?: string | null;
   role: 'user' | 'admin';
+  status?: string;
   balance: number;
   total_spent: number;
   created_at: string;
@@ -143,6 +133,7 @@ export interface Service {
   min_quantity: number;
   max_quantity: number;
   completion_time?: number | null; // hours to complete
+  completion_time_text?: string | null; // provider's verbatim label, e.g. "57 minutes"
   time_pricing?: Record<number, number> | null; // { hours: multiplier } e.g. { 6: 2.0, 12: 1.5, 24: 1.0, 48: 0.8, 72: 0.7 }
   status: 'active' | 'inactive';
 }
@@ -321,11 +312,16 @@ export const authAPI = {
       const anyRes: any = res;
       if (anyRes.error) {
         const err = anyRes.error;
-        const status = err.status || (err.raw && err.raw.status) || undefined;
         const message = err.message || err.msg || JSON.stringify(err);
-        const detail = anyRes?.error?.details || anyRes?.error?.hint || anyRes?.error?.message;
-        const full = status ? `(${status}) ${message}` : message;
-        const errObj = new Error(full + (detail ? ` — ${detail}` : ''));
+        // Only append hints/details when they add information — `message` is
+        // often repeated verbatim as `.details`, which produced errors like
+        // "(400) Invalid login credentials — Invalid login credentials".
+        const detail = anyRes?.error?.hint || anyRes?.error?.details;
+        const suffix =
+          typeof detail === 'string' && detail !== message && !message.includes(detail)
+            ? ` — ${detail}`
+            : '';
+        const errObj = new Error(message + suffix);
         (errObj as any).supabase = anyRes;
         throw errObj;
       }
@@ -421,28 +417,19 @@ export const servicesAPI = {
         return regularServices;
       }
 
+      // Canonical linkage is provider_services.service_id; descriptions are customer-facing
+      // text and never encode provider metadata. Only active mappings may override catalog
+      // rates, so zero-priced/deactivated provider services stay invisible to buyers.
       const providerByServiceId = new Map<string, any>();
-      const providerByProviderServiceId = new Map<string, any>();
       (providerServices || []).forEach((ps: any) => {
         const serviceId = String(ps?.service_id || '').trim();
         if (!serviceId || providerByServiceId.has(serviceId)) return;
+        if (ps?.status && ps.status !== 'active') return;
         providerByServiceId.set(serviceId, ps);
-      });
-      (providerServices || []).forEach((ps: any) => {
-        const providerServiceId = String(ps?.provider_service_id || '').trim();
-        if (!providerServiceId || providerByProviderServiceId.has(providerServiceId)) return;
-        providerByProviderServiceId.set(providerServiceId, ps);
       });
 
       const mergedServices: Service[] = regularServices.map((service) => {
-        let providerInfo = providerByServiceId.get(service.id);
-        if (!providerInfo) {
-          const match = String(service.description || '').match(/Provider Service ID:\s*([^|]+)/i);
-          const providerServiceIdFromDescription = match ? String(match[1]).trim() : '';
-          if (providerServiceIdFromDescription) {
-            providerInfo = providerByProviderServiceId.get(providerServiceIdFromDescription);
-          }
-        }
+        const providerInfo = providerByServiceId.get(service.id);
         if (!providerInfo) return service;
 
         const linkedService = Array.isArray(providerInfo?.services)
@@ -460,6 +447,8 @@ export const servicesAPI = {
             completionTime === null || completionTime === undefined
               ? null
               : Number(completionTime),
+          completion_time_text:
+            providerInfo?.completion_time_text ?? service.completion_time_text ?? null,
         };
       });
 
@@ -475,14 +464,12 @@ export const servicesAPI = {
     }
   },
 
-  async resolveProviderLink(service: Pick<Service, 'id' | 'description'>): Promise<ProviderServiceLink | null> {
-    const fromDescription = extractProviderLinkFromDescription(service.description);
-    if (fromDescription) {
-      return fromDescription;
-    }
-
+  async resolveProviderLink(service: Pick<Service, 'id'>): Promise<ProviderServiceLink | null> {
     const cachedProviderService = (await getProviderServicesSnapshot()).find((item: any) => {
-      return String(item?.service_id || '').trim() === String(service.id).trim();
+      return (
+        item?.status !== 'inactive' &&
+        String(item?.service_id || '').trim() === String(service.id).trim()
+      );
     });
 
     if (cachedProviderService?.provider_id && cachedProviderService?.provider_service_id) {
@@ -516,7 +503,11 @@ export const ordersAPI = {
       let ratePer1000 = service.rate_per_1000;
       try {
         const providerServices = await getProviderServicesSnapshot();
-        const match = providerServices.find((row: any) => String(row?.service_id || '').trim() === String(serviceId).trim());
+        const match = providerServices.find(
+          (row: any) =>
+            row?.status !== 'inactive' &&
+            String(row?.service_id || '').trim() === String(serviceId).trim()
+        );
         if (match?.our_rate !== undefined && match?.our_rate !== null) {
           ratePer1000 = Number(match.our_rate);
         }
@@ -524,6 +515,11 @@ export const ordersAPI = {
         // fallback to service rate if provider snapshot fails
       }
       charge = (ratePer1000 / 1000) * quantity;
+    }
+
+    // Zero-priced (unpriced) services must never be orderable for free.
+    if (!Number.isFinite(charge) || charge <= 0) {
+      throw new Error('This service has not been priced yet. Please contact support.');
     }
 
     // Check user balance
@@ -762,15 +758,44 @@ export const adminAPI = {
     return data as UserProfile;
   },
 
-  async deleteUser(userId: string) {
-    const { error } = await runSupabaseQuery(
+  async updateUserStatus(userId: string, status: 'active' | 'banned') {
+    const { data, error } = await runSupabaseQuery(
       supabase
         .from('user_profiles')
-        .delete()
-        .eq('id', userId),
-      'admin user delete'
+        .update({ status })
+        .eq('id', userId)
+        .select()
+        .single(),
+      'admin user status update'
     );
     if (error) throw error;
+    return data as UserProfile;
+  },
+
+  async deleteUser(userId: string) {
+    // Full account deletion: the server verifies this caller is an admin and removes the
+    // auth.users row (cascading to profile, orders, payments, tickets) via the service key.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error('User not authenticated');
+
+    const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const serverMessage =
+        payload?.error && typeof payload.error === 'object'
+          ? payload.error.message
+          : payload?.error;
+      throw new Error(serverMessage || 'Failed to delete user');
+    }
   },
 
   // Service Management
@@ -877,6 +902,34 @@ export const adminAPI = {
     );
     if (error) throw error;
     return data;
+  },
+
+  async updateProviderService(
+    mappingId: string,
+    updates: {
+      provider_rate?: number;
+      our_rate?: number;
+      min_quantity?: number;
+      max_quantity?: number;
+      status?: string;
+      service_name?: string;
+      service_category?: string;
+      service_status?: string;
+      completion_time_override?: boolean;
+      completion_time_hours?: number;
+      completion_time_text?: string | null;
+    }
+  ) {
+    const response = await fetch(`/api/admin/provider-services/${mappingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || 'Failed to update provider service');
+    }
+    return payload?.data ?? payload;
   },
 
   async deleteProvider(providerId: string) {
@@ -1152,7 +1205,11 @@ export const adminAPI = {
     const payload = await response.json();
 
     if (!response.ok) {
-      throw new Error(payload?.error || 'Failed to load settings');
+      const serverMessage =
+        payload?.error && typeof payload.error === 'object'
+          ? payload.error.message
+          : payload?.error;
+      throw new Error(serverMessage || 'Failed to load settings');
     }
 
     return payload?.settings ?? null;
@@ -1169,7 +1226,11 @@ export const adminAPI = {
     const payload = await response.json();
 
     if (!response.ok) {
-      throw new Error(payload?.error || 'Failed to save settings');
+      const serverMessage =
+        payload?.error && typeof payload.error === 'object'
+          ? payload.error.message
+          : payload?.error;
+      throw new Error(serverMessage || 'Failed to save settings');
     }
 
     return payload?.settings ?? {};

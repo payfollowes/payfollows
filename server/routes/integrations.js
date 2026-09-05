@@ -35,18 +35,6 @@ const getApiKeyFromRequest = (req) => {
   return '';
 };
 
-const extractProviderServiceId = (description) => {
-  const text = String(description || '');
-  const match = text.match(/Provider Service ID:\s*([^|]+)/i);
-  return match ? String(match[1]).trim() : '';
-};
-
-const extractProviderId = (description) => {
-  const text = String(description || '');
-  const match = text.match(/Provider ID:\s*([^|]+)/i);
-  return match ? String(match[1]).trim() : '';
-};
-
 async function runTimedQuery(query, label) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SUPABASE_QUERY_TIMEOUT_MS);
@@ -169,23 +157,7 @@ router.get(
 
     const serviceId = req.validatedQuery.service_id;
 
-    const { data: serviceRow, error: serviceError } = await runTimedQuery(
-      supabaseAdmin
-        .from('services')
-        .select('id, description')
-        .eq('id', serviceId)
-        .maybeSingle(),
-      'single service lookup query'
-    );
-
-    if (serviceError) {
-      console.error('[Server] Error fetching service for provider link:', serviceError);
-      return res.status(500).json(errorResponse('SERVICE_LOOKUP_FAILED', 'Failed to resolve service mapping'));
-    }
-
-    const providerServiceIdFromDescription = extractProviderServiceId(serviceRow?.description);
-    const providerIdFromDescription = extractProviderId(serviceRow?.description);
-
+    // Canonical linkage: a single active provider_services row owns the service_id.
     const { data: directLink, error: directLinkError } = await runTimedQuery(
       supabaseAdmin
         .from('provider_services')
@@ -206,44 +178,33 @@ router.get(
       return res.json(successResponse({ providerLink: directLink }));
     }
 
-    if (providerServiceIdFromDescription) {
-      const { data: descriptionLink, error: descriptionLinkError } = await runTimedQuery(
-        supabaseAdmin
-          .from('provider_services')
-          .select('provider_id, provider_service_id, service_id, status')
-          .eq('provider_service_id', providerServiceIdFromDescription)
-          .eq('status', 'active')
-          .limit(1)
-          .maybeSingle(),
-        'description provider service link query'
-      );
-
-      if (descriptionLinkError) {
-        console.error('[Server] Error fetching description-based provider link:', descriptionLinkError);
-        return res.status(500).json(errorResponse('DESCRIPTION_LINK_FAILED', 'Failed to resolve provider link'));
-      }
-
-      if (descriptionLink?.provider_id && descriptionLink?.provider_service_id) {
-        return res.json(successResponse({ providerLink: descriptionLink }));
-      }
-    }
-
-    if (providerIdFromDescription && providerServiceIdFromDescription) {
-      return res.json(
-        successResponse({
-          providerLink: {
-            provider_id: providerIdFromDescription,
-            provider_service_id: providerServiceIdFromDescription,
-            service_id: serviceId,
-            status: 'active',
-          },
-        })
-      );
-    }
-
     return res.json(successResponse({ providerLink: null }));
   })
 );
+
+// The provider completion-time fields (completion_time_text, completion_time_override,
+// completion_time_override_hours) arrive with migration
+// 20260906_add_provider_completion_time_fields.sql; probe so the snapshot keeps
+// working (hours-only) until it has been applied.
+let providerServicesTimeTextProbe = { at: 0, available: false };
+const providerServicesHasTimeTextColumn = async () => {
+  if (Date.now() - providerServicesTimeTextProbe.at < 5 * 60 * 1000) {
+    return providerServicesTimeTextProbe.available;
+  }
+  let available = false;
+  try {
+    const { error } = await supabaseAdmin
+      .from('provider_services')
+      .select('completion_time_text, completion_time_override')
+      .limit(1);
+    available = !error;
+  } catch (error) {
+    console.warn('[provider-services] completion-time fields probe failed:', error?.message || error);
+    available = false;
+  }
+  providerServicesTimeTextProbe = { at: Date.now(), available };
+  return available;
+};
 
 // GET /api/integrations/provider-services
 // Fetches provider services with joined service info (so category is available)
@@ -257,6 +218,8 @@ router.get(
     if (providerServicesCache.expiresAt > Date.now() && providerServicesCache.value) {
       return res.json(successResponse({ providerServices: providerServicesCache.value, cached: true }));
     }
+
+    const hasTimeTextColumn = await providerServicesHasTimeTextColumn();
 
     const { data: providerServices, error } = await fetchAllRows(
       (from, to) =>
@@ -272,6 +235,9 @@ router.get(
             max_quantity,
             status,
             service_id,
+            ${hasTimeTextColumn
+              ? 'completion_time_text, completion_time_override, completion_time_override_hours,'
+              : ''}
             services (
               id,
               name,

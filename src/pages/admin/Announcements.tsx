@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { adminAPI } from '../../lib/api';
 
 interface Announcement {
@@ -72,16 +73,24 @@ const AnnouncementsPage: React.FC = () => {
         }
     };
 
+    const { confirmDialog, confirmAsync } = useConfirmDialog();
+
     const handleDelete = async (id: string) => {
-        if (confirm('Are you sure you want to delete this announcement?')) {
-            try {
-                await adminAPI.deleteAnnouncement(id);
-                setAnnouncements(prev => prev.filter(a => a.id !== id));
-                alert('Announcement deleted successfully!');
-            } catch (error) {
-                console.error('Failed to delete announcement:', error);
-                alert('Failed to delete announcement. Please try again.');
-            }
+        const confirmed = await confirmAsync({
+            title: 'Delete Announcement',
+            message: 'Are you sure you want to delete this announcement?',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!confirmed) return;
+
+        try {
+            await adminAPI.deleteAnnouncement(id);
+            setAnnouncements(prev => prev.filter(a => a.id !== id));
+            alert('Announcement deleted successfully!');
+        } catch (error) {
+            console.error('Failed to delete announcement:', error);
+            alert('Failed to delete announcement. Please try again.');
         }
     };
 
@@ -106,6 +115,7 @@ const AnnouncementsPage: React.FC = () => {
 
     return (
         <div>
+            {confirmDialog}
             <div className="flex justify-end items-center mb-6">
                 <button
                     onClick={() => {

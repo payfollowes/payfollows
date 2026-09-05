@@ -1,5 +1,6 @@
 ﻿'use client';
 import React, { useState, useEffect } from 'react';
+import { useConfirmDialog } from '../../components/ConfirmDialog';
 
 interface Provider {
   id: string;
@@ -282,8 +283,16 @@ const ProviderManagementPage: React.FC = () => {
     }
   };
 
+  const { confirmDialog, confirmAsync } = useConfirmDialog();
+
   const handleDeleteProvider = async (providerId: string) => {
-    if (!confirm('Are you sure you want to delete this provider? This action cannot be undone.')) {
+    const confirmed = await confirmAsync({
+      title: 'Delete Provider',
+      message: 'Are you sure you want to delete this provider? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -306,6 +315,7 @@ const ProviderManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <div className="bg-brand-container border border-brand-border rounded-2xl p-4 space-y-3">
         <h2 className="text-lg font-semibold">Provider Sync Options</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

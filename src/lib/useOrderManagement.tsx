@@ -24,6 +24,7 @@ export interface OrderResult {
   startCount?: number | null;
   remains?: number | null;
   estimatedCompletionHours?: number | null;
+  createdAt?: string | null;
   message?: string;
 }
 
@@ -106,6 +107,13 @@ export const useOrderManagement = () => {
     }
 
     const charge = calculateCharge(service, orderData.quantity, orderData.deliveryTime);
+    // Zero-priced (unpriced) services must never create free orders.
+    if (charge <= 0) {
+      return {
+        valid: false,
+        error: 'This service has not been priced yet. Please contact support or pick another service.',
+      };
+    }
     if (profile.balance < charge) {
       return { valid: false, error: 'Insufficient balance. Please add funds first.' };
     }
@@ -231,6 +239,7 @@ export const useOrderManagement = () => {
                   startCount: normalizeProgressField(orderData.start_count),
                   remains: normalizeProgressField(orderData.remains),
                   estimatedCompletionHours: orderData.delivery_time ?? null,
+                  createdAt: orderData.created_at ?? null,
                 });
 
                 if (mappedStatus === 'completed' || mappedStatus === 'failed') {
@@ -353,6 +362,7 @@ export const useOrderManagement = () => {
               orderId: createdOrder.id,
               quantity: orderData.quantity,
               estimatedCompletionHours: orderData.deliveryTime,
+              createdAt: createdOrder.created_at ?? null,
               message: String(providerError),
             };
             setOrderStatus(failedResult);
@@ -370,6 +380,7 @@ export const useOrderManagement = () => {
             orderId: createdOrder.id,
             quantity: orderData.quantity,
             estimatedCompletionHours: orderData.deliveryTime,
+            createdAt: createdOrder.created_at ?? null,
             message: providerError,
           };
           setOrderStatus(failedResult);
@@ -400,6 +411,7 @@ export const useOrderManagement = () => {
           providerOrderId,
           quantity: orderData.quantity,
           estimatedCompletionHours: orderData.deliveryTime,
+          createdAt: createdOrder.created_at ?? null,
           message: 'Order created and sent to provider.',
         };
 

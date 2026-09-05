@@ -36,7 +36,7 @@ const Faq: React.FC = () => {
   };
 
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
+    <section id="faq" className="px-4 sm:px-6 lg:px-8 py-20">
       <div className="container mx-auto text-center mb-12">
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold">Frequently Asked Question</h2>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User } from '../App';
 import { getAvatarDataUri } from '../lib/avatar';
 
@@ -40,9 +40,42 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [navHidden, setNavHidden] = useState(false);
+    const [navScrolled, setNavScrolled] = useState(false);
+
+    // Fluid nav: frosted glass once scrolled; hide on scroll down, reveal on
+    // scroll up. Skipped for reduced-motion users.
+    useEffect(() => {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let lastY = window.scrollY;
+      let ticking = false;
+
+      const onScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          const y = window.scrollY;
+          const delta = y - lastY;
+          setNavScrolled(y > 12);
+          if (!reduceMotion) {
+            if (y > 160 && delta > 4) {
+              setNavHidden(true);
+            } else if (delta < -4 || y < 160) {
+              setNavHidden(false);
+            }
+          }
+          lastY = y;
+          ticking = false;
+        });
+      };
+
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+      return () => window.removeEventListener('scroll', onScroll);
+    }, []);
 
   return (
-    <header className="py-6 px-4 sm:px-6 lg:px-8">
+    <header className={`sticky top-0 z-40 pf-nav py-6 px-4 sm:px-6 lg:px-8 border-b border-transparent${navScrolled ? ' pf-nav-scrolled' : ''}${navHidden ? ' pf-nav-hidden' : ''}`}>
       <div className="container mx-auto flex justify-between items-center gap-3">
         <Logo />
         <nav className="hidden md:flex items-center space-x-6">

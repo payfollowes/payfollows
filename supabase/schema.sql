@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   email TEXT UNIQUE NOT NULL,
   api_key TEXT UNIQUE,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'banned', 'inactive')),
   balance DECIMAL(10, 2) DEFAULT 0.00,
   total_spent DECIMAL(10, 2) DEFAULT 0.00,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -242,10 +243,21 @@ CREATE POLICY "Admins can view all profiles"
   ON public.user_profiles FOR SELECT
   USING (public.is_admin(auth.uid()));
 
+CREATE POLICY "Admins can delete user profiles"
+  ON public.user_profiles FOR DELETE
+  USING (public.is_admin(auth.uid()));
+
+CREATE POLICY "Admins can update user profiles"
+  ON public.user_profiles FOR UPDATE
+  USING (public.is_admin(auth.uid()));
+
 -- RLS Policies for services
+-- Customers may only see priced, active services. Zero-priced (unpriced) rows stay hidden
+-- until an admin sets rate_per_1000 > 0 (the provider sync also keeps them inactive).
+DROP POLICY IF EXISTS "Anyone can view active services" ON public.services;
 CREATE POLICY "Anyone can view active services"
   ON public.services FOR SELECT
-  USING (status = 'active');
+  USING (status = 'active' AND rate_per_1000 > 0);
 
 CREATE POLICY "Admins can manage services"
   ON public.services FOR ALL
@@ -316,7 +328,11 @@ CREATE POLICY "Admins can manage platform summary"
   USING (public.is_admin(auth.uid()))
   WITH CHECK (public.is_admin(auth.uid()));
 
--- Function to automatically create user profile on signup
+-- Function to automatically create user profile on signup.
+-- Only ever act on AFTER INSERT of an auth.users row. A stray trigger that fired this
+-- function from another table/event used to crash with
+--   record "new" has no field "raw_user_meta_data"
+-- because NEW there is a row without auth metadata columns - which also broke user deletion.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -326,6 +342,11 @@ DECLARE
   has_raw boolean := false;
   has_user_meta boolean := false;
 BEGIN
+  -- Never touch NEW.<field> unless this really is an INSERT into auth.users.
+  IF TG_OP <> 'INSERT' OR TG_TABLE_SCHEMA <> 'auth' OR TG_TABLE_NAME <> 'users' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
   -- If there is already a profile for this auth user id, do nothing.
   IF EXISTS(SELECT 1 FROM public.user_profiles WHERE id = NEW.id) THEN
     RETURN NEW;

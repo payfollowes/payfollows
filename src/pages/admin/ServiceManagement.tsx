@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { adminAPI, Provider, Service as ApiService } from '../../lib/api';
 import { useAdminServices, useUpdateService, useCreateService, useDeleteService } from '../../lib/useAdminServices';
 import { isTimeoutError } from '../../lib/utils';
@@ -18,13 +19,23 @@ type ProviderServiceRow = {
   max_quantity: number;
   status: 'active' | 'inactive';
   service_id: string | null;
+  completion_time_text?: string | null;
+  completion_time_override?: boolean;
+  completion_time_override_hours?: number | null;
   services?: {
     id: string;
     name: string;
     category: string;
     description: string | null;
+    completion_time?: number | null;
     status: 'active' | 'inactive';
   } | null;
+};
+
+const formatCompletionTimeLabel = (hours: number | null | undefined): string => {
+  const h = Math.max(1, Math.round(Number(hours) || 1));
+  if (h >= 24 && h % 24 === 0) return `${h / 24} day${h / 24 === 1 ? '' : 's'}`;
+  return `${h} hour${h === 1 ? '' : 's'}`;
 };
 
 const PROVIDER_SERVICES_TIMEOUT_MS = 120000; // 2 minutes (was 60s)
@@ -80,7 +91,9 @@ const ServiceManagementPage: React.FC = () => {
     max_quantity: 10000,
     status: 'active' as 'active' | 'inactive',
     description: '',
+    completion_time: 24,
   });
+  const [manualOverride, setManualOverride] = useState(false);
 
   // Use services data from React Query instead of state
   const services = servicesData;
@@ -186,7 +199,9 @@ const ServiceManagementPage: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('quantity') || name.includes('rate') ? parseFloat(value) || 0 : value,
+      [name]: name.includes('quantity') || name.includes('rate') || name.includes('completion_time')
+        ? parseFloat(value) || 0
+        : value,
     }));
   };
   const handleOpenModal = (service: Service | null = null) => {
@@ -200,7 +215,10 @@ const ServiceManagementPage: React.FC = () => {
         max_quantity: service.max_quantity,
         status: service.status,
         description: service.description || '',
+        completion_time: service.completion_time ?? 24,
       });
+      const mappings = providerServicesByServiceId.get(service.id) || [];
+      setManualOverride(mappings.some((m) => m.completion_time_override));
     } else {
       setCurrentService(null);
       setFormData({
@@ -211,7 +229,9 @@ const ServiceManagementPage: React.FC = () => {
         max_quantity: 10000,
         status: 'active',
         description: '',
+        completion_time: 24,
       });
+      setManualOverride(false);
     }
     setIsModalOpen(true);
   };
@@ -229,9 +249,34 @@ const ServiceManagementPage: React.FC = () => {
       if (currentService) {
         // Update existing service using mutation hook
         updateSvc(
-          { serviceId: currentService.id, updates: formData },
+          { serviceId: currentService.id, updates: formData as any },
           {
-            onSuccess: () => {
+            onSuccess: async () => {
+              // Mirror the delivery time onto provider mappings as a manual override,
+              // so the provider sync won't clobber an admin-set time.
+              const mappings = providerServicesByServiceId.get(currentService.id) || [];
+              if (mappings.length > 0) {
+                try {
+                  await Promise.all(
+                    mappings.map((mapping) =>
+                      adminAPI.updateProviderService(mapping.id, {
+                        completion_time_override: manualOverride,
+                        ...(manualOverride
+                          ? {
+                              completion_time_hours: Math.max(1, Math.round(Number(formData.completion_time) || 24)),
+                              completion_time_text: formatCompletionTimeLabel(Number(formData.completion_time)),
+                            }
+                          : {}),
+                      })
+                    )
+                  );
+                } catch (err: any) {
+                  console.error('Failed to update provider mapping time:', err);
+                  setError(
+                    err?.message || 'Service saved, but updating the provider mapping time failed. Apply the completion-time migration first.'
+                  );
+                }
+              }
               setIsModalOpen(false);
               setCurrentService(null);
             },
@@ -288,6 +333,10 @@ const ServiceManagementPage: React.FC = () => {
     });
     return map;
   }, [providerServices]);
+
+  const mappingsForCurrentService = currentService
+    ? (providerServicesByServiceId.get(currentService.id) || []).length
+    : 0;
 
   const categories = useMemo(() => {
     return Array.from(
@@ -470,8 +519,15 @@ const ServiceManagementPage: React.FC = () => {
     setPage(1);
   }, [debouncedSearch, categoryFilter, providerFilter, statusFilter, pageSize]);
 
+  const { confirmDialog, confirmAsync } = useConfirmDialog();
+
   const handleToggleStatus = async (service: Service) => {
-    if (!confirm(`Are you sure you want to ${service.status === 'active' ? 'deactivate' : 'activate'} this service?`)) {
+    const confirmed = await confirmAsync({
+      title: 'Toggle Service Status',
+      message: `Are you sure you want to ${service.status === 'active' ? 'deactivate' : 'activate'} this service?`,
+      confirmLabel: service.status === 'active' ? 'Deactivate' : 'Activate',
+    });
+    if (!confirmed) {
       return;
     }
     
@@ -493,7 +549,13 @@ const ServiceManagementPage: React.FC = () => {
   };
 
   const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+    const confirmed = await confirmAsync({
+      title: 'Delete Service',
+      message: 'Are you sure you want to delete this service? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
     
@@ -512,6 +574,7 @@ const ServiceManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {confirmDialog}
       <div className="bg-brand-container border border-brand-border rounded-2xl p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -709,6 +772,7 @@ const ServiceManagementPage: React.FC = () => {
                   <th className="p-4 font-semibold">Provider</th>
                   <th className="p-4 font-semibold text-right">Rate (per 1k)</th>
                   <th className="p-4 font-semibold text-center">Min/Max</th>
+                  <th className="p-4 font-semibold">Time</th>
                   <th className="p-4 font-semibold">Status</th>
                   <th className="p-4 font-semibold text-right">Actions</th>
                 </tr>
@@ -756,6 +820,14 @@ const ServiceManagementPage: React.FC = () => {
                       </td>
                       <td className="p-4 text-center text-gray-300 font-mono">
                         {service.min_quantity} / {service.max_quantity}
+                      </td>
+                      <td className="p-4">
+                        <div className="text-gray-300">{formatCompletionTimeLabel(service.completion_time)}</div>
+                        {mappings.some((m) => m.completion_time_override) && (
+                          <span className="mt-0.5 inline-block text-[10px] uppercase tracking-wide text-amber-400/80">
+                            manual
+                          </span>
+                        )}
                       </td>
                       <td className="p-4">
                         <span 
@@ -970,6 +1042,35 @@ const ServiceManagementPage: React.FC = () => {
                 </div>
               </div>
               
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="service-form-time" className="block text-sm font-medium mb-1">Delivery time (hours)</label>
+                  <input
+                    type="number"
+                    id="service-form-time"
+                    name="completion_time"
+                    value={formData.completion_time}
+                    onChange={handleInputChange}
+                    min="1"
+                    className="w-full bg-black/20 border border-brand-border rounded-lg p-2 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none text-sm"
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label
+                    className={`flex items-center gap-2 text-sm ${mappingsForCurrentService > 0 ? 'text-gray-300 cursor-pointer' : 'text-gray-500 cursor-not-allowed'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={manualOverride}
+                      onChange={(e) => setManualOverride(e.target.checked)}
+                      disabled={mappingsForCurrentService === 0}
+                      className="h-4 w-4 rounded border-brand-border bg-black/20"
+                    />
+                    Manual override (sync won't overwrite)
+                  </label>
+                </div>
+              </div>
+
               <div className="mb-6">
                 <label htmlFor="service-form-description" className="block text-sm font-medium mb-1">Description</label>
                 <textarea

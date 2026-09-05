@@ -102,7 +102,14 @@ const AddFundsPage: React.FC = () => {
       if (paymentOrder && paymentOrder.paymentUrl) {
         window.location.href = paymentOrder.paymentUrl;
       } else {
-        throw new Error((paymentOrder && paymentOrder.error) || 'Payment URL not received');
+        // Server errors arrive as { error: { code, message } } — never pass the
+        // raw object into Error() or users see a literal "[object Object]".
+        const serverError =
+          paymentOrder &&
+          (typeof paymentOrder.error === 'object'
+            ? paymentOrder.error.message
+            : paymentOrder.error);
+        throw new Error(serverError || 'Payment URL not received');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to initiate payment. Please try again.');

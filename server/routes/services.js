@@ -106,6 +106,12 @@ router.post('/', async (req, res) => {
     const { name, category, rate_per_1000, min_quantity, max_quantity, status, description } =
       req.body;
 
+    // A service with no resell price must never be customer-visible: unpriced rows are hidden
+    // until an admin sets rate_per_1000 > 0 (customers only ever see active, priced services).
+    const numericRate = Number(rate_per_1000);
+    const forcedStatus =
+      Number.isFinite(numericRate) && numericRate <= 0 ? 'inactive' : status || 'active';
+
     const { data, error } = await supabase.from('services').insert([
       {
         name,
@@ -113,7 +119,7 @@ router.post('/', async (req, res) => {
         rate_per_1000,
         min_quantity,
         max_quantity,
-        status: status || 'active',
+        status: forcedStatus,
         description,
       },
     ]);
@@ -145,6 +151,25 @@ router.patch('/:id', async (req, res) => {
 
     const { id } = req.params;
     const updates = req.body;
+
+    if (updates.rate_per_1000 !== undefined) {
+      const numericRate = Number(updates.rate_per_1000);
+      if (Number.isFinite(numericRate) && numericRate <= 0) {
+        // Lowering the price to zero unprices the service: hide it from customers.
+        updates.status = 'inactive';
+      } else if (Number.isFinite(numericRate) && numericRate > 0 && updates.status === undefined) {
+        // Pricing a previously unpriced service makes it sellable again.
+        const { data: current } = await supabase
+          .from('services')
+          .select('rate_per_1000')
+          .eq('id', id)
+          .maybeSingle();
+        const prevRate = Number(current?.rate_per_1000 ?? NaN);
+        if (Number.isFinite(prevRate) && prevRate <= 0) {
+          updates.status = 'active';
+        }
+      }
+    }
 
     const { data, error } = await supabase
       .from('services')

@@ -4,6 +4,7 @@ import { withTimeout } from '../../lib/withTimeout';
 import type { Order } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { supabase } from '../../lib/supabase';
+import { formatHoursLabel, formatOrderEta } from '../../lib/orderEta';
 
 const statusColors: { [key: string]: string } = {
   completed: 'bg-green-500/20 text-green-400',
@@ -19,6 +20,8 @@ const OrdersPage: React.FC = () => {
   const [error, setError] = useState('');
   const { formatAmount } = useCurrency();
   const ordersRef = useRef<Order[]>([]);
+  // Re-render every 30s so live ETAs stay fresh without constant polling.
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     ordersRef.current = orders;
@@ -129,12 +132,21 @@ const OrdersPage: React.FC = () => {
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       void syncProviderStatuses(ordersRef.current);
+      setNow(Date.now());
     }, 30000);
 
     return () => {
       window.clearInterval(intervalId);
     };
   }, []);
+
+  const formatOrderTime = (order: Order): string => {
+    const verbatim = order.service?.completion_time_text?.trim();
+    if (verbatim) return verbatim;
+    return (
+      formatHoursLabel(order.service?.completion_time ?? order.delivery_time) || '—'
+    );
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -176,6 +188,7 @@ const OrdersPage: React.FC = () => {
                 <th className="px-4 py-3 font-semibold w-20">Start</th>
                 <th className="px-4 py-3 font-semibold w-24">Quantity</th>
                 <th className="px-4 py-3 font-semibold w-24">Remains</th>
+                <th className="px-4 py-3 font-semibold w-28">Time</th>
                 <th className="px-4 py-3 font-semibold w-24">Charge</th>
                 <th className="px-4 py-3 font-semibold w-28">Status</th>
               </tr>
@@ -214,6 +227,21 @@ const OrdersPage: React.FC = () => {
                     {order.remains === null || order.remains === undefined
                       ? '-'
                       : Number(order.remains).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-gray-300">{formatOrderTime(order)}</div>
+                    {(() => {
+                      const eta = formatOrderEta({
+                        status: order.status,
+                        quantity: order.quantity,
+                        remains: order.remains,
+                        createdAt: order.created_at,
+                        now,
+                      });
+                      return eta ? (
+                        <div className="mt-0.5 text-xs text-blue-400/90">ETA {eta}</div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-4  font-medium text-green-400 ">{formatAmount(order.charge)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">

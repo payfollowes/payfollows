@@ -111,7 +111,7 @@ async function registerRoutes() {
     { default: webhookRouter },
     { default: integrationsRouter },
     { default: fastpayRouter },
-    { default: adminRouter },
+    { default: adminRouter, startProviderSyncScheduler },
     { default: paymentsRouter },
     { default: providerRouter },
   ] = await Promise.all([
@@ -136,6 +136,9 @@ async function registerRoutes() {
   app.use('/api/admin', adminRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/provider', providerRouter);
+
+  // Periodic re-sync of provider services (picks up newly published completion times).
+  startProviderSyncScheduler();
 
   // health check
   app.get('/api/health', (_req, res) => {

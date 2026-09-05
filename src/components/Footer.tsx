@@ -87,6 +87,7 @@ const Footer: React.FC = () => {
             <Logo />
             <p className="mt-4 text-sm">Emam Media LTD</p>
             <p className="text-sm">Address: 20-22 Wenlock Road, London, England, N1 7GU</p>
+            <p className="text-sm">Support: support@payfollows.com</p>
           </div>
           <div>
             <h4 className="mb-4 font-semibold text-white">Quick Links</h4>

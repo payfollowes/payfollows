@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { adminAPI, Order, Service, UserProfile } from '../../lib/api';
 import { isTimeoutError } from '../../lib/utils';
 
@@ -55,8 +56,15 @@ const OrderManagementPage: React.FC = () => {
   fetchOrders();
 }, []);
 
+  const { confirmDialog, confirmAsync } = useConfirmDialog();
+
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
-    if (!confirm(`Are you sure you want to update this order's status to ${newStatus}?`)) {
+    const confirmed = await confirmAsync({
+      title: 'Update Order Status',
+      message: `Are you sure you want to update this order's status to ${newStatus}?`,
+      confirmLabel: 'Update',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -110,6 +118,7 @@ const OrderManagementPage: React.FC = () => {
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex flex-col md:flex-row md:items-center md:justify-end mb-6 gap-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative">

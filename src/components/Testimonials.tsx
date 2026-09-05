@@ -1,60 +1,89 @@
-
 import React from 'react';
+import Reveal from './Reveal';
 import { getAvatarDataUri } from '../lib/avatar';
 
 const testimonials = [
-  { name: 'Melissa Smith', metric: '321514 Followers' },
-  { name: 'Michael John', metric: '50M Subscribers' },
-  { name: 'Isabella', metric: '132512 Listeners' },
+  {
+    rating: '4.9',
+    quote:
+      'Orders land in minutes and the support team answers at 2am. I resell at my own price and keep the margin.',
+    name: 'Melissa Smith',
+    role: 'Reseller',
+  },
+  {
+    rating: '5.0',
+    quote:
+      'We run every client order through PayFollows. The live stats mean I can show results instead of promising them.',
+    name: 'Michael John',
+    role: 'Agency owner',
+  },
+  {
+    rating: '5.0',
+    quote:
+      'Release day plays used to be a gamble. Now I drop the link and watch the streams climb.',
+    name: 'Isabella',
+    role: 'Creator',
+  },
 ];
 
+/**
+ * Testimonials — the template's rating quote cards, using the existing
+ * PayFollows client scenarios.
+ */
 const Testimonials: React.FC = () => {
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
-      <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div className="flex flex-col gap-4">
-          {testimonials.map((testimonial, index) => (
-            <div key={index} className="bg-brand-container border border-brand-border rounded-xl p-4 flex items-center justify-between shadow-lg backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <img
-                  src={getAvatarDataUri(testimonial.name)}
-                  alt={testimonial.name}
-                  className="w-16 h-16 rounded-full border-2 border-brand-purple"
-                  fetchpriority="low"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div>
-                  <h4 className="font-semibold text-lg flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                    {testimonial.name}
-                  </h4>
-                  <p className="text-gray-300 text-xl font-bold">{testimonial.metric}</p>
-                </div>
-              </div>
-              <button className="bg-brand-accent p-2 rounded-full text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" /><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" /></svg>
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="text-left">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6">Superior Smm Panel To Boost Your Social Media Accounts</h2>
-          <p className="text-gray-300 mb-8">
-            PayFollows is a real booster for your social media accounts. We work hard to create results-driven strategies to generate social media activities organically. Our packages are very cheap, and we have created all kinds of packages for small, medium and large businesses. Try the PayFollows Marketing Panel for your social media growth.
+    <section id="reviews" className="px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+      <Reveal>
+        <div className="container mx-auto text-center mb-14">
+          <span className="inline-block bg-purple-500/20 text-brand-light-purple px-4 py-1 rounded-full text-sm font-medium border border-purple-500/30">
+            [testimonials]
+          </span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mt-6">
+            Loved by creators and resellers
+          </h2>
+          <p className="text-gray-300 max-w-2xl mx-auto mt-5">
+            From solo creators to agencies — people grow faster with PayFollows, without sacrificing
+            quality or consistency.
           </p>
-          <div className="flex gap-4">
-            <button className="bg-white/10 hover:bg-white/20 p-3 rounded-lg transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <button className="bg-white/10 hover:bg-white/20 p-3 rounded-lg transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-          </div>
         </div>
+      </Reveal>
+
+      <div className="container mx-auto grid md:grid-cols-3 gap-6 max-w-6xl">
+        {testimonials.map((testimonial, index) => (
+          <Reveal key={testimonial.name} delay={index * 100} className="h-full">
+          <figure
+            className="bg-brand-container border border-brand-border rounded-2xl p-7 backdrop-blur-sm flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-brand-light-purple">
+                  {testimonial.rating}
+                </span>
+                <span className="text-brand-light-purple/60 text-sm tracking-wider">★★★★★</span>
+              </div>
+              <blockquote className="text-gray-300 mt-4 leading-relaxed">
+                “{testimonial.quote}”
+              </blockquote>
+            </div>
+            <figcaption className="flex items-center gap-3.5 mt-6 pt-5 border-t border-brand-border">
+              <img
+                src={getAvatarDataUri(testimonial.name)}
+                alt=""
+                className="w-11 h-11 rounded-full border-2 border-brand-purple"
+                loading="lazy"
+                decoding="async"
+              />
+              <div>
+                <div className="font-semibold text-white">{testimonial.name}</div>
+                <div className="text-sm text-gray-400">{testimonial.role}</div>
+              </div>
+            </figcaption>
+          </figure>
+          </Reveal>
+        ))}
       </div>
     </section>
   );
 };
 
-export default Testimonials;
+export default Testimonials;

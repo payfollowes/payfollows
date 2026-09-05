@@ -287,17 +287,6 @@ export const earningsAPI = {
       }
     });
 
-    const parseProviderRateFromDescription = (description: string) => {
-      const match = String(description || '').match(/Provider Rate:\s*([0-9.]+)/i);
-      if (!match) return 0;
-      const value = Number(match[1]);
-      return Number.isFinite(value) ? value : 0;
-    };
-    const parseProviderIdFromDescription = (description: string) => {
-      const match = String(description || '').match(/Provider ID:\s*([^|]+)/i);
-      return match ? String(match[1]).trim() : '';
-    };
-
     const byDate = new Map<string, DerivedSummaryRow>();
     const byProvider = new Map<string, ProviderBreakdownRow>();
     const providerNameById = new Map<string, string>();
@@ -310,16 +299,12 @@ export const earningsAPI = {
       const revenue = Number(order.charge || 0);
       const quantity = Number(order.quantity || 0);
 
-      const serviceNode = Array.isArray(order.service) ? order.service[0] : order.service;
-      const serviceDescription = String(serviceNode?.description || '');
-
       const mappedProviderRate = providerRateByServiceId.get(String(order.service_id || '').trim()) || 0;
-      const providerRate = mappedProviderRate > 0 ? mappedProviderRate : parseProviderRateFromDescription(serviceDescription);
+      const providerRate = mappedProviderRate > 0 ? mappedProviderRate : 0;
       const providerCost = (providerRate / 1000) * quantity;
       const profit = revenue - providerCost;
       const providerId =
         String(order.provider_id || '').trim() ||
-        parseProviderIdFromDescription(serviceDescription) ||
         String(providerIdByServiceId.get(String(order.service_id || '').trim()) || '').trim();
 
       const prev = byDate.get(orderDate) || {

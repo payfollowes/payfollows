@@ -27,6 +27,14 @@ const platformMatchers = [
   { key: 'twitch', label: 'Twitch', aliases: ['twitch'] },
 ];
 
+const getEstimatedTimeLabel = (service: Service | null): string => {
+  // Prefer the provider's own verbatim label ("57 minutes", "2 hours 12 minutes").
+  const verbatim = service?.completion_time_text?.trim();
+  if (verbatim) return verbatim;
+  const hours = getEstimatedTimeHours(service);
+  return hours ? `${hours} hours` : 'Standard';
+};
+
 const getEstimatedTimeHours = (service: Service | null): number | null => {
   if (!service) return null;
   if (service.completion_time && Number.isFinite(service.completion_time)) {
@@ -410,7 +418,7 @@ const ServicesPage: React.FC = () => {
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">Avg. Time</p>
                 <p className="mt-2 font-semibold text-white">
-                  {getEstimatedTimeHours(selectedService) ? `${getEstimatedTimeHours(selectedService)} hours` : 'Standard'}
+                  {getEstimatedTimeLabel(selectedService)}
                 </p>
               </div>
               <button
@@ -484,7 +492,7 @@ const ServicesPage: React.FC = () => {
                   <div className="lg:pt-8">
                     <p className="text-xs uppercase tracking-[0.14em] text-gray-500 lg:hidden">Avg. Time</p>
                     <p className="mt-1 font-semibold text-white">
-                      {getEstimatedTimeHours(service) ? `${getEstimatedTimeHours(service)} hours` : 'Standard'}
+                      {getEstimatedTimeLabel(service)}
                     </p>
                   </div>
 

@@ -7,6 +7,7 @@ import { useCurrency } from "../../lib/CurrencyContext";
 import { consumePendingOrderServiceId } from "../../lib/pendingOrderService";
 import { renderSocialPlatformIcon } from "../../components/social/SocialIcon";
 import { getServicesFromCache, setServicesCache } from "../../lib/servicesCache";
+import { formatOrderEta } from "../../lib/orderEta";
 
 
 const NewOrderPage: React.FC = () => {
@@ -24,6 +25,12 @@ const NewOrderPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingServices, setLoadingServices] = useState(true);
   const [paymentInProgress, setPaymentInProgress] = useState(false);
+  // Tick every 30s so the live ETA stays fresh.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const categorySliderRef = useRef<HTMLDivElement | null>(null);
@@ -268,22 +275,9 @@ const NewOrderPage: React.FC = () => {
     return `${normalizedHours} hour${normalizedHours === 1 ? "" : "s"}`;
   };
 
+  // Sync no longer stores provider metadata in descriptions, so the raw text is safe to show.
   const getDisplayDescription = (raw: string | null | undefined) => {
-    const text = String(raw || "").trim();
-    if (!text) return "";
-
-    const markerIndex = text.search(/Provider ID:\s*/i);
-    if (markerIndex === 0) {
-      // Metadata-only description from sync: hide it from users.
-      return "";
-    }
-
-    if (markerIndex > 0) {
-      const trimmed = text.slice(0, markerIndex).trim();
-      return trimmed || text;
-    }
-
-    return text;
+    return String(raw || "").trim();
   };
 
   useEffect(() => {
@@ -562,8 +556,20 @@ const NewOrderPage: React.FC = () => {
   };
 
   const formatEstimatedTimeLabel = (service: Service | null): string => {
+    // Prefer the provider's own verbatim label ("57 minutes", "2 hours 12 minutes") —
+    // rounded hours hide how fast a service actually is.
+    const verbatim = service?.completion_time_text?.trim();
+    if (verbatim) return verbatim;
     return formatEstimatedTimeValue(getEstimatedTimeHours(service));
   };
+
+  const orderEtaLabel = formatOrderEta({
+    status: orderStatus?.status,
+    quantity: orderStatus?.quantity,
+    remains: orderStatus?.remains,
+    createdAt: orderStatus?.createdAt,
+    now,
+  });
 
   const getEstimatedCurrentCount = (): number | null => {
     if (orderStatus?.startCount === null || orderStatus?.startCount === undefined) {
@@ -841,6 +847,11 @@ const NewOrderPage: React.FC = () => {
               <p className="mt-1 text-sm font-semibold text-white">
                 {formatEstimatedTimeValue(orderStatus.estimatedCompletionHours)}
               </p>
+              {orderEtaLabel && (
+                <p className="mt-0.5 text-xs text-blue-300">
+                  Live ETA: {orderEtaLabel}
+                </p>
+              )}
             </div>
             <div className="rounded-xl border border-blue-400/20 bg-black/20 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-blue-200/70">

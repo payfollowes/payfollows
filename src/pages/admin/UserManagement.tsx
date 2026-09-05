@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../lib/api';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { adminAPI, authAPI } from '../../lib/api';
 import { isTimeoutError } from '../../lib/utils';
 import type { UserProfile } from '../../lib/api';
 
@@ -9,12 +10,24 @@ const statusColors: { [key: string]: string } = {
   inactive: 'bg-gray-500/20 text-gray-400',
 };
 
+interface ConfirmDialogState {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  workingLabel: string;
+  danger: boolean;
+  onConfirm: () => Promise<void>;
+}
+
 const UserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -25,6 +38,10 @@ const UserManagementPage: React.FC = () => {
   // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
+    authAPI
+      .getUserProfile()
+      .then(profile => setCurrentUserId(profile ? profile.id : null))
+      .catch(() => setCurrentUserId(null));
   }, []);
 
   const fetchUsers = async () => {
@@ -82,27 +99,73 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleBanUser = async (userId: string, currentStatus: string) => {
-    if (!confirm(`Are you sure you want to ${currentStatus === 'active' ? 'ban' : 'unban'} this user?`)) return;
-    
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Toggle user status between 'active' and 'banned'
-      const newStatus = currentStatus === 'active' ? 'banned' : 'active';
-      // This would require adding a new method to update user status in adminAPI
-      // For now, we'll just refresh the user list
-      await fetchUsers();
-    } catch (err) {
-      console.error('Error updating user status:', err);
-      setError('Failed to update user status. Please try again.');
-    } finally {
-      setLoading(false);
+  const handleBanUser = (user: UserProfile) => {
+    const isBanned = user.status === 'banned';
+    setConfirmDialog({
+      title: `${isBanned ? 'Unban' : 'Ban'} User`,
+      message: `Are you sure you want to ${isBanned ? 'unban' : 'ban'} "${user.username}" (${user.email})?`,
+      confirmLabel: isBanned ? 'Unban' : 'Ban',
+      workingLabel: isBanned ? 'Unbanning...' : 'Banning...',
+      danger: !isBanned,
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          setError('');
+          setSuccess('');
+          await adminAPI.updateUserStatus(user.id, isBanned ? 'active' : 'banned');
+          await fetchUsers();
+          setSuccess(isBanned ? 'User unbanned.' : 'User banned.');
+          setConfirmDialog(null);
+        } catch (err) {
+          console.error('Error updating user status:', err);
+          setError(err instanceof Error && err.message ? err.message : 'Failed to update user status. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteUser = (user: UserProfile) => {
+    if (currentUserId && user.id === currentUserId) {
+      setSuccess('');
+      setError('You cannot delete your own account.');
+      return;
     }
+
+    setConfirmDialog({
+      title: 'Delete User',
+      message:
+        `Are you sure you want to permanently delete "${user.username}" (${user.email})?\n\n` +
+        'This will also delete their orders, payments, and support tickets. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      workingLabel: 'Deleting...',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          setError('');
+          setSuccess('');
+          await adminAPI.deleteUser(user.id);
+          await fetchUsers();
+          setSuccess(`User "${user.username}" deleted successfully.`);
+          setConfirmDialog(null);
+        } catch (err) {
+          console.error('Error deleting user:', err);
+          setError(err instanceof Error && err.message ? err.message : 'Failed to delete user. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
     return (
         <div>
+            {success && (
+                <div className="mb-4 p-4 bg-green-500/20 text-green-400 rounded-lg">
+                    {success}
+                </div>
+            )}
             {error && (
                 <div className="mb-4 p-4 bg-red-500/20 text-red-400 rounded-lg">
                     {error}
@@ -164,13 +227,23 @@ const UserManagementPage: React.FC = () => {
                                                     </svg>
                                                 </button>
                                                 <button 
-                                                    onClick={() => handleBanUser(user.id, user.status || 'active')}
+                                                    onClick={() => handleBanUser(user)}
                                                     className="text-red-400 hover:text-white p-1 rounded hover:bg-red-500/20"
                                                     title={user.status === 'banned' ? 'Unban User' : 'Ban User'}
                                                     disabled={loading}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                         <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.367zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteUser(user)}
+                                                    className="text-red-400 hover:text-white p-1 rounded hover:bg-red-500/20"
+                                                    title="Delete User"
+                                                    disabled={loading}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                                     </svg>
                                                 </button>
                                             </div>
@@ -189,6 +262,20 @@ const UserManagementPage: React.FC = () => {
                 )}
                 </div>
             </div>
+
+            {/* Confirm Action Modal */}
+            {confirmDialog && (
+                <ConfirmDialog
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmLabel={confirmDialog.confirmLabel}
+                    danger={confirmDialog.danger}
+                    loading={loading}
+                    workingLabel={confirmDialog.workingLabel}
+                    onConfirm={confirmDialog.onConfirm}
+                    onCancel={() => setConfirmDialog(null)}
+                />
+            )}
 
             {/* Edit User Modal */}
             {isEditModalOpen && editingUser && (

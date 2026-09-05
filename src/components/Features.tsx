@@ -1,40 +1,75 @@
-
 import React from 'react';
+import Reveal from './Reveal';
 
 const features = [
-  { title: 'Support 24/7', description: 'Our top priority is to satisfy our customers. That\'s why our SMM Panel 24/7 Support is available for our customers to assist you with your queries and concerns.' },
-  { title: 'Quick Response from Clients', description: 'Our client\'s feedback is important to us. That\'s why we strive to respond to our clients as quickly as possible. This helps us maintain a strong relationship.' },
-  { title: 'Social Media Marketing Service', description: 'Social Media Marketing Panel is an essential aspect of digital marketing today. With our range of SMM services, we strive to help businesses expand their online presence.' },
-  { title: 'Achievements', description: 'We\'re proud of our achievements. Our panel has been used by thousands of clients worldwide. An order is placed every 0.3 seconds on our platform.' },
+  {
+    icon: '🛡️',
+    title: 'Secure payments',
+    description: 'PayPal, cards and crypto, plus Paytm, bKash, JazzCash and more — all on a secure gateway.',
+    tagline: 'Your money stays safe.',
+  },
+  {
+    icon: '📊',
+    title: 'Real-time order data',
+    description: 'Live status and delivery stats on every order — queued, running, partial or complete.',
+    tagline: 'Know what is working.',
+  },
+  {
+    icon: '🏆',
+    title: 'Genuine quality',
+    description: 'Services run from real accounts and stay within each platform’s terms and services.',
+    tagline: 'Growth that protects your reputation.',
+  },
+  {
+    icon: '🚀',
+    title: 'Fastest delivery',
+    description: 'Orders start within seconds of checkout — because in social growth, timing decides results.',
+    tagline: 'Delivered before you close the tab.',
+  },
 ];
 
+/**
+ * Features — the template's 4-card feature grid, carrying the PayFollows
+ * benefit set (secure payments, real-time data, quality, speed).
+ */
 const Features: React.FC = () => {
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-20">
-      <div className="container mx-auto relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-px h-full bg-purple-500/20"></div>
-          <div className="h-px w-full bg-purple-500/20 absolute"></div>
-          <div className="w-48 h-48 rounded-full bg-purple-900/20 absolute blur-3xl"></div>
+    <section id="features" className="px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+      <Reveal>
+        <div className="container mx-auto text-center mb-14">
+          <span className="inline-block bg-purple-500/20 text-brand-light-purple px-4 py-1 rounded-full text-sm font-medium border border-purple-500/30">
+            [features]
+          </span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mt-6">
+            Everything you need to grow on social
+          </h2>
+          <p className="text-gray-300 max-w-2xl mx-auto mt-5">
+            Buy, track and resell — faster, and without starting from scratch on every order.
+          </p>
         </div>
-        <div className="relative w-24 h-24 bg-brand-accent rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-purple-glow rotate-45">
-            <div className="-rotate-45">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
-                </svg>
+      </Reveal>
+
+      <div className="container mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl">
+        {features.map((feature, index) => (
+          <Reveal key={feature.title} delay={index * 90} className="h-full">
+          <div
+            className="bg-brand-container border border-brand-border rounded-2xl p-7 backdrop-blur-sm flex flex-col h-full hover:border-purple-500/40 transition-colors"
+          >
+            <div className="relative w-16 h-16 mb-5 flex items-center justify-center">
+              <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-lg"></div>
+              <div className="relative w-14 h-14 bg-black/30 rounded-full flex items-center justify-center border border-purple-500/30">
+                <span className="text-2xl">{feature.icon}</span>
+              </div>
             </div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-8 relative">
-          {features.map((feature, index) => (
-            <div key={index} className="p-6 text-center md:text-left">
-              <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
-              <p className="text-gray-300">{feature.description}</p>
-            </div>
-          ))}
-        </div>
+            <h3 className="text-xl font-bold">{feature.title}</h3>
+            <p className="text-gray-300 text-sm leading-relaxed mt-3 flex-grow">{feature.description}</p>
+            <p className="text-brand-light-purple text-sm font-medium mt-4">{feature.tagline}</p>
+          </div>
+          </Reveal>
+        ))}
       </div>
     </section>
   );
 };
 
-export default Features;
+export default Features;

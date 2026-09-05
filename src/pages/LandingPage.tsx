@@ -1,13 +1,15 @@
 import React from 'react';
 import Header from '../components/Header';
+import Preloader from '../components/Preloader';
+import CursorFollower from '../components/CursorFollower';
 import Hero from '../components/Hero';
+import PlatformsMarquee from '../components/PlatformsMarquee';
 import About from '../components/About';
-import Benefits from '../components/Benefits';
+import Features from '../components/Features';
+import SmmPanelServices from '../components/SmmPanelServices';
+import Statistics from '../components/Statistics';
 import Services from '../components/Services';
 import Testimonials from '../components/Testimonials';
-import SmmPanelServices from '../components/SmmPanelServices';
-import Features from '../components/Features';
-import Statistics from '../components/Statistics';
 import WhyChooseUs from '../components/WhyChooseUs';
 import Faq from '../components/Faq';
 import Cta from '../components/Cta';
@@ -19,23 +21,32 @@ interface LandingPageProps {
   onLogout: () => void;
 }
 
+/**
+ * PayFollows landing — structure follows the Verseo SaaS template
+ * (hero + product panel, trust strip, difference split, features,
+ * use cases, results, examples, testimonials, pricing, FAQ, CTA, footer).
+ * Colors are the existing PayFollows palette — no new colors introduced.
+ */
 const LandingPage: React.FC<LandingPageProps> = ({ currentUser, onLogout }) => {
   return (
-    <div className="bg-brand-dark ds-noise text-white font-sans overflow-x-hidden">
+    <div className="bg-brand-dark ds-noise text-white font-sans overflow-x-clip">
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-[#1a0a36] to-brand-dark z-0"></div>
       <div className="absolute top-0 left-0 w-full h-[500px] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,81,255,0.2),rgba(255,255,255,0))]"></div>
-      
+
+      <Preloader />
+      <CursorFollower />
+
       <div className="relative z-10">
         <Header currentUser={currentUser} onLogout={onLogout} />
         <main>
           <Hero />
+          <PlatformsMarquee />
           <About />
-          <Benefits />
+          <Features />
+          <SmmPanelServices />
+          <Statistics />
           <Services />
           <Testimonials />
-          <SmmPanelServices />
-          <Features />
-          <Statistics />
           <WhyChooseUs />
           <Faq />
           <Cta />
@@ -46,4 +57,4 @@ const LandingPage: React.FC<LandingPageProps> = ({ currentUser, onLogout }) => {
   );
 };
 
-export default LandingPage;
+export default LandingPage;

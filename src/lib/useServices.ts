@@ -12,6 +12,7 @@ export interface Service {
   min_quantity: number;
   max_quantity: number;
   completion_time?: number;
+  completion_time_text?: string | null;
   time_pricing?: Record<string, number>;
   status: 'active' | 'inactive';
   created_at?: string;
