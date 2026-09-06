@@ -90,7 +90,12 @@ async function getProviderServicesSnapshot() {
     }
 
     const payload = await response.json().catch(() => ({}));
-    const providerServices = Array.isArray(payload?.providerServices) ? payload.providerServices : [];
+    // Envelope is { success, data: { providerServices } } — accept both shapes defensively.
+    const payloadBody =
+      payload?.data && typeof payload.data === 'object' && payload.data !== null ? payload.data : payload;
+    const providerServices = Array.isArray(payloadBody?.providerServices)
+      ? payloadBody.providerServices
+      : [];
 
     providerServicesCache = providerServices;
     providerServicesCacheExpiresAt = Date.now() + PROVIDER_SERVICES_CACHE_TTL_MS;
@@ -927,7 +932,14 @@ export const adminAPI = {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(payload?.message || payload?.error || 'Failed to update provider service');
+      // Server errors arrive as { error: { code, message } } — never pass the raw object into Error().
+      const serverError =
+        payload?.error && typeof payload.error === 'object'
+          ? payload.error.message
+          : typeof payload?.error === 'string'
+            ? payload.error
+            : payload?.message;
+      throw new Error(serverError || 'Failed to update provider service');
     }
     return payload?.data ?? payload;
   },

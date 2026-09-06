@@ -759,24 +759,103 @@ router.post(
 );
 
 // POST /api/admin/sync-provider-services - Sync services from provider
-router.post(
-  '/sync-provider-services',
-  validateRequest(schemas.syncProviderServicesSchema),
-  asyncHandler(async (req, res) => {
-    console.log('[sync-services] Request received:', req.validatedBody || req.body);
-  
+// Middleware: require an authenticated admin session (Authorization header or auth cookie).
+// Guards service-role operations (like provider syncs) against unauthenticated callers.
+const requireAdminSession = asyncHandler(async (req, res, next) => {
+  if (!supabaseConfigured || !supabase) {
+    return res.status(503).json(errorResponse('AUTH_UNAVAILABLE', 'Authentication is not configured.'));
+  }
+
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  const parts = String(authHeader || '').split(' ');
+  let token = parts.length === 2 && parts[0] === 'Bearer' ? parts[1] : '';
+
+  if (!token) {
+    const cookieHeader = req.headers['cookie'] || req.headers['Cookie'] || '';
+    const cookies = {};
+    cookieHeader.split(';').forEach((c) => {
+      const idx = c.indexOf('=');
+      if (idx > -1) {
+        const key = c.slice(0, idx).trim();
+        const val = c.slice(idx + 1).trim();
+        cookies[key] = decodeURIComponent(val);
+      }
+    });
+    const possibleKeys = [
+      AUTH_COOKIE_NAMES.accessToken,
+      'sb:token',
+      'sb-token',
+      'sb_session',
+      'sb_access_token',
+      'sb-access-token',
+      'supabase-auth-token',
+      'supabase-session',
+      'supabase-token',
+      'sb:token-0',
+    ];
+    for (const k of possibleKeys) {
+      if (!cookies[k]) continue;
+      const val = cookies[k];
+      if (val.startsWith('{') || val.startsWith('%7B')) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(val));
+          if (parsed && parsed.access_token) {
+            token = parsed.access_token;
+            break;
+          }
+          if (parsed && parsed.currentSession && parsed.currentSession.access_token) {
+            token = parsed.currentSession.access_token;
+            break;
+          }
+        } catch (e) {
+          // ignore malformed cookie values
+        }
+      }
+      if (!token && val && val.length > 20) {
+        token = val;
+        break;
+      }
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json(errorResponse('MISSING_TOKEN', 'Missing session token (Authorization header or cookie)'));
+  }
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userData || !userData.user) {
+    return res.status(401).json(errorResponse('INVALID_TOKEN', 'Invalid token or unable to fetch user from token'));
+  }
+
+  const { data: callerProfile, error: callerProfileError } = await supabaseAdmin
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userData.user.id)
+    .maybeSingle();
+  if (callerProfileError || !callerProfile || callerProfile.role !== 'admin') {
+    return res.status(403).json(errorResponse('FORBIDDEN', 'Admin role required'));
+  }
+
+  req.adminUserId = userData.user.id;
+  next();
+});
+
+// Core sync routine shared by the HTTP route, the in-process scheduler, and the cron
+// endpoint. Returns { status, json } instead of writing to a response so it can be
+// invoked from anywhere (including inside serverless functions).
+const syncProviderCore = async ({ provider_id, markup_percent, categories, category, replace_existing }) => {
+  console.log('[sync-services] Sync started:', { provider_id, replace_existing });
+
   try {
     if (!supabaseAdminConfigured || !supabaseAdmin) {
-      return res.status(503).json(errorResponse('NO_SERVICE_KEY', 'SUPABASE_SERVICE_ROLE_KEY is missing on the server.'));
+      return { status: 503, json: errorResponse('NO_SERVICE_KEY', 'SUPABASE_SERVICE_ROLE_KEY is missing on the server.') };
     }
 
-    const { provider_id, markup_percent } = req.validatedBody || req.body;
-    const { categories, category, replace_existing } = req.body || {};
     const markupPercent = toNumber(markup_percent, 0);
     const shouldReplaceExisting = replace_existing !== undefined ? Boolean(replace_existing) : true;
 
     if (!provider_id) {
-      return res.status(400).json(errorResponse('MISSING_PROVIDER', 'Missing provider_id'));
+      return { status: 400, json: errorResponse('MISSING_PROVIDER', 'Missing provider_id') };
     }
 
     // Get provider details
@@ -789,9 +868,9 @@ router.post(
     if (providerError || !provider) {
       if (providerError) {
         const serverError = getSupabaseServerError(providerError, 'Provider lookup failed');
-        return res.status(serverError.status).json(errorResponse('PROVIDER_LOOKUP_FAILED', serverError.message));
+        return { status: serverError.status, json: errorResponse('PROVIDER_LOOKUP_FAILED', serverError.message) };
       }
-      return res.status(404).json(errorResponse('PROVIDER_NOT_FOUND', 'Provider not found'));
+      return { status: 404, json: errorResponse('PROVIDER_NOT_FOUND', 'Provider not found') };
     }
 
     console.log('[sync-services] Provider found:', provider.id);
@@ -809,7 +888,7 @@ router.post(
     try {
       servicesUrl = new URL(provider.api_url);
     } catch (e) {
-      return res.status(400).json(errorResponse('INVALID_PROVIDER_URL', 'Invalid provider API URL'));
+      return { status: 400, json: errorResponse('INVALID_PROVIDER_URL', 'Invalid provider API URL') };
     }
 
     servicesUrl.searchParams.append('action', 'services');
@@ -836,11 +915,11 @@ router.post(
     if (!response.ok) {
       const errorText = await response.text();
       console.log('[sync-services] API Error:', errorText);
-      return res.status(200).json({
+      return { status: 200, json: {
         success: false,
         message: `Provider returned status ${response.status}`,
         count: 0
-      });
+      } };
     }
 
     const servicesData = await response.json();
@@ -855,11 +934,11 @@ router.post(
     }
 
     if (!Array.isArray(services) || services.length === 0) {
-      return res.status(200).json({
+      return { status: 200, json: {
         success: false,
         message: 'No services returned from provider',
         count: 0
-      });
+      } };
     }
 
     const rawCategoryFilter = Array.isArray(categories) ? categories : String(category || '')
@@ -1128,11 +1207,11 @@ router.post(
       }
     } catch (upsertError) {
       console.error('[sync-services] Service upsert failed:', upsertError);
-      return res.status(500).json({
+      return { status: 500, json: {
         success: false,
         message: upsertError?.message || 'Failed to upsert services during sync',
         error_samples: upsertErrorSamples,
-      });
+      } };
     }
 
     if (skippedServiceNames.length > 0) {
@@ -1220,11 +1299,11 @@ router.post(
     
     if (invalidMappings.length > 0) {
       console.error('[sync-services] Found invalid mappings:', invalidMappings);
-      return res.status(400).json({
+      return { status: 400, json: {
         success: false,
         message: 'Invalid provider service mappings detected',
         invalid_count: invalidMappings.length,
-      });
+      } };
     }
 
     // Always delete old mappings before syncing new ones to avoid UNIQUE constraint violations
@@ -1245,13 +1324,13 @@ router.post(
     await new Promise(resolve => setTimeout(resolve, 100));
 
     if (dedupedMappings.length === 0) {
-      return res.status(200).json({
+      return { status: 200, json: {
         success: false,
         count: 0,
         synced_count: 0,
         message: 'Provider returned services, but no valid mappings were created.',
         skipped_services: skippedServiceNames.length,
-      });
+      } };
     }
 
     const PROVIDER_MAPPING_CHUNK_SIZE = 1000;
@@ -1276,20 +1355,20 @@ router.post(
             first_item: chunk[0],
             full_error: JSON.stringify(upsertError)
           });
-          return res.status(500).json({
+          return { status: 500, json: {
             success: false,
             message: 'Failed to save provider mappings',
             error: upsertError.message,
             details: upsertError.details || upsertError.hint,
-          });
+          } };
         }
       } catch (chunkError) {
         console.error('[sync-services] Chunk upsert exception:', chunkError);
-        return res.status(500).json({
+        return { status: 500, json: {
           success: false,
           message: 'Failed to save provider mappings',
           error: chunkError.message,
-        });
+        } };
       }
     }
 
@@ -1335,22 +1414,34 @@ router.post(
     console.log('[sync-services] Successfully synced', dedupedMappings.length, 'services');
 
     invalidateServiceCaches();
-    return res.status(200).json({
+    return { status: 200, json: {
       success: true,
       count: dedupedMappings.length,
       synced_count: dedupedMappings.length,
       skipped_services: skippedServiceNames.length,
       message: `Synced ${dedupedMappings.length} services from provider with ${markupPercent}% markup`,
       services: dedupedMappings,
-    });
+    } };
   } catch (error) {
     console.error('[sync-services] Error:', error);
     const serverError = getSupabaseServerError(error);
-    return res.status(serverError.status).json({
+    return { status: serverError.status, json: {
       success: false,
       message: serverError.message,
-    });
+    } };
   }
+};
+
+// POST /api/admin/sync-provider-services - manual provider sync (admin session required)
+router.post(
+  '/sync-provider-services',
+  requireAdminSession,
+  validateRequest(schemas.syncProviderServicesSchema),
+  asyncHandler(async (req, res) => {
+    const { provider_id, markup_percent } = req.validatedBody || req.body;
+    const { categories, category, replace_existing } = req.body || {};
+    const result = await syncProviderCore({ provider_id, markup_percent, categories, category, replace_existing });
+    return res.status(result.status).json(result.json);
   })
 );
 
@@ -2527,6 +2618,30 @@ router.patch('/provider-quality-ratings/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/admin/cron/sync-providers - scheduled provider re-sync entry point.
+// Invoked by Vercel Cron (see vercel.json "crons") or any external scheduler.
+// Guarded by CRON_SECRET: when that env var is set, Vercel automatically sends it
+// as "Authorization: Bearer <CRON_SECRET>" on cron invocations.
+// Runs the sync in-process (no HTTP loopback), so it works inside serverless too.
+router.all('/cron/sync-providers', async (req, res) => {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    return res.status(503).json(errorResponse('CRON_NOT_CONFIGURED', 'CRON_SECRET env var is not set - configure it to enable the scheduled sync.'));
+  }
+  const authHeader = req.headers['authorization'] || req.headers['x-cron-secret'] || '';
+  const provided = String(authHeader).startsWith('Bearer ') ? String(authHeader).slice(7) : String(authHeader);
+  if (provided !== expected) {
+    return res.status(401).json(errorResponse('INVALID_CRON_SECRET', 'Invalid cron secret.'));
+  }
+  try {
+    const summary = await runScheduledProviderSync();
+    return res.json(successResponse({ ok: true, message: 'Scheduled provider sync completed.', ...summary }));
+  } catch (error) {
+    console.error('[sync-cron] Scheduled sync failed:', error);
+    return res.status(500).json(errorResponse('CRON_SYNC_FAILED', error?.message || 'Scheduled sync failed'));
+  }
+});
+
 // Scheduled provider re-sync
 // Re-runs the full provider service sync periodically so newly published
 // provider completion times (and catalog changes) are picked up automatically.
@@ -2548,32 +2663,31 @@ const runScheduledProviderSync = async () => {
       .eq('status', 'active');
     if (error || !providers?.length) {
       console.warn('[sync-scheduler] No active providers to sync:', error?.message || 'none found');
-      return;
+      return { providers: 0, results: [] };
     }
 
-    const baseUrl = `http://127.0.0.1:${process.env.PORT || 4000}`;
+    const results = [];
     for (const provider of providers) {
       if (!provider.api_key || !provider.api_url) continue;
       try {
-        const response = await fetch(`${baseUrl}/api/admin/sync-provider-services`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider_id: provider.id, replace_existing: true }),
-          signal: AbortSignal.timeout(300000),
+        const result = await syncProviderCore({ provider_id: provider.id, replace_existing: true });
+        results.push({
+          provider_id: provider.id,
+          status: result.status,
+          synced: result.json?.synced_count ?? result.json?.count ?? 0,
+          ok: Boolean(result.json?.success),
         });
-        const payload = await response.json().catch(() => null);
-        console.log('[sync-scheduler] Provider sync finished:', provider.id, {
-          status: response.status,
-          synced: payload?.synced_count ?? payload?.count ?? 0,
-          ok: Boolean(payload?.success),
-        });
+        console.log('[sync-scheduler] Provider sync finished:', provider.id, results[results.length - 1]);
       } catch (error) {
+        results.push({ provider_id: provider.id, status: 500, error: error?.message || error });
         console.warn('[sync-scheduler] Provider sync failed:', provider.id, error?.message || error);
       }
     }
     console.log('[sync-scheduler] Cycle complete in', ((Date.now() - startedAt) / 1000).toFixed(1) + 's');
+    return { providers: results.length, results };
   } catch (error) {
     console.warn('[sync-scheduler] Unexpected error:', error?.message || error);
+    return { error: error?.message || error };
   } finally {
     scheduledSyncRunning = false;
   }

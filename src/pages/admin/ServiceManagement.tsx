@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { adminAPI, Provider, Service as ApiService } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import { useAdminServices, useUpdateService, useCreateService, useDeleteService } from '../../lib/useAdminServices';
 import { isTimeoutError } from '../../lib/utils';
 
@@ -45,7 +46,7 @@ type Service = ApiService & { description: string };
 
 const ServiceManagementPage: React.FC = () => {
   // React Query hooks for services data
-  const { data: servicesData = [], isLoading: servicesLoading, error: servicesError, status: servicesStatus } = useAdminServices();
+  const { data: servicesData = [], isLoading: servicesLoading, error: servicesError, status: servicesStatus, refetch: refetchServices } = useAdminServices();
   const { mutate: updateSvc, isPending: updatePending } = useUpdateService();
   const { mutate: createSvc, isPending: createPending } = useCreateService();
   const { mutate: deleteSvc, isPending: deletePending } = useDeleteService();
@@ -145,7 +146,10 @@ const ServiceManagementPage: React.FC = () => {
       }
 
       const payload = await response.json();
-      const rows = Array.isArray(payload?.providerServices) ? payload.providerServices : [];
+      // Envelope is { success, data: { providerServices } } — accept both shapes defensively.
+      const payloadBody =
+        payload?.data && typeof payload.data === 'object' && payload.data !== null ? payload.data : payload;
+      const rows = Array.isArray(payloadBody?.providerServices) ? payloadBody.providerServices : [];
       setProviderServices(rows);
     } catch (err: any) {
       const isTimeout = err instanceof DOMException && err.name === 'AbortError';
@@ -277,6 +281,10 @@ const ServiceManagementPage: React.FC = () => {
                   );
                 }
               }
+              // The server invalidates its admin-services cache inside the mapping PATCH;
+              // refetch afterwards so the Time column reflects the saved override instead
+              // of a snapshot fetched between the two writes.
+              await refetchServices();
               setIsModalOpen(false);
               setCurrentService(null);
             },
@@ -396,9 +404,15 @@ const ServiceManagementPage: React.FC = () => {
     setError('');
     setIsReloading(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const response = await fetch('/api/admin/sync-provider-services', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           provider_id: manageProviderId,
           category: syncCategoriesInput.trim() ? syncCategoriesInput.trim() : undefined,

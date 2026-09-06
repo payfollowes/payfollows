@@ -113,7 +113,7 @@ const scheduleIdleTask = (task: () => void) => {
     return;
   }
 
-  window.setTimeout(task, 300);
+  (window as Window).setTimeout(task, 300);
 };
 
 const syncAuthCookieMirror = (rawValue: string | null) => {

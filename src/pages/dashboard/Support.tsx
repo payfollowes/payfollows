@@ -243,7 +243,7 @@ const SupportPage: React.FC = () => {
                                     {ticket.status}
                                 </span>
                             </td>
-                            <td className="p-4 text-gray-300">{ticket.lastUpdate}</td>
+                            <td className="p-4 text-gray-300">{ticket.updated_at || ticket.created_at}</td>
                             <td className="p-4">
                                 <button 
                                   onClick={() => setSelectedTicket(ticket)}

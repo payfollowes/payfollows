@@ -2,6 +2,9 @@
   "version": 2,
   "buildCommand": "vite build",
   "outputDirectory": "dist",
+  "crons": [
+    { "path": "/api/admin/cron/sync-providers", "schedule": "0 */6 * * *" }
+  ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/[...route].js" },
     { "src": "/webhook/(.*)", "dest": "/api/webhook/$1" },

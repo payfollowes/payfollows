@@ -1,5 +1,5 @@
 ﻿import path from 'path';
-import { defineConfig, loadEnv, splitVendorChunkPlugin } from 'vite';
+import { defineConfig, loadEnv, splitVendorChunkPlugin, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(async ({ mode }) => {
@@ -90,5 +90,5 @@ export default defineConfig(async ({ mode }) => {
         chunkSizeWarningLimit: 1000,
         reportCompressedSize: true,
       }
-    };
+    } as UserConfig;
 });

@@ -24,6 +24,8 @@ class CacheStore {
     this.ttl = ttlMs;
     this.fetchTimeout = fetchTimeoutMs;
     this.pendingRequests = new Map();
+    // Bumped on every invalidation so stale in-flight fetches can be detected.
+    this.generation = 0;
   }
 
   /**
@@ -51,6 +53,7 @@ class CacheStore {
   async get(key, fetcher) {
     const now = Date.now();
     const entry = this.store.get(key);
+    const generationAtStart = this.generation;
 
     // Fresh cache hit - return immediately
     if (entry && entry.expiresAt > now && !entry.stale) {
@@ -63,27 +66,35 @@ class CacheStore {
       console.log(`[Cache] STALE: ${key} - attempting refresh with ${this.fetchTimeout}ms timeout`);
       
       try {
-        // Use deduplication for concurrent requests
+        // Use deduplication for concurrent requests - but only join an in-flight
+        // refresh that started in the same generation (i.e. after the last invalidation).
         const pendingKey = `${key}:refresh`;
-        if (!this.pendingRequests.has(pendingKey)) {
+        const pending = this.pendingRequests.get(pendingKey);
+        if (!pending || pending.generation !== this.generation) {
+          const gen = this.generation;
           const refreshPromise = Promise.race([
             fetcher(),
             this.createTimeoutPromise(this.fetchTimeout),
           ]).then(data => {
-            this.set(key, data);
-            this.pendingRequests.delete(pendingKey);
+            // If the entry was invalidated while we were fetching, do not repopulate
+            // the cache with a pre-invalidation snapshot.
+            if (this.generation === gen) this.set(key, data);
+            if (this.pendingRequests.get(pendingKey)?.promise === refreshPromise) {
+              this.pendingRequests.delete(pendingKey);
+            }
             return data;
           }).catch(error => {
-            this.pendingRequests.delete(pendingKey);
+            if (this.pendingRequests.get(pendingKey)?.promise === refreshPromise) {
+              this.pendingRequests.delete(pendingKey);
+            }
             console.warn(`[Cache] Refresh failed for ${key}: ${error.message}; using stale data`);
             throw error;
           });
           
-          this.pendingRequests.set(pendingKey, refreshPromise);
+          this.pendingRequests.set(pendingKey, { promise: refreshPromise, generation: gen });
         }
 
-        const refreshPromise = this.pendingRequests.get(pendingKey);
-        return await refreshPromise;
+        return await this.pendingRequests.get(pendingKey).promise;
       } catch (error) {
         // Refresh failed or timed out - return stale data
         console.warn(
@@ -97,24 +108,30 @@ class CacheStore {
     // Cache miss - fetch fresh data
     console.log(`[Cache] MISS: ${key}`);
     const pendingKey = `${key}:fetch`;
+    const pending = this.pendingRequests.get(pendingKey);
     
-    if (!this.pendingRequests.has(pendingKey)) {
+    if (!pending || pending.generation !== this.generation) {
+      const gen = this.generation;
       const fetchPromise = Promise.race([
         fetcher(),
         this.createTimeoutPromise(this.fetchTimeout),
       ]).then(data => {
-        this.set(key, data);
-        this.pendingRequests.delete(pendingKey);
+        if (this.generation === gen) this.set(key, data);
+        if (this.pendingRequests.get(pendingKey)?.promise === fetchPromise) {
+          this.pendingRequests.delete(pendingKey);
+        }
         return data;
       }).catch(error => {
-        this.pendingRequests.delete(pendingKey);
+        if (this.pendingRequests.get(pendingKey)?.promise === fetchPromise) {
+          this.pendingRequests.delete(pendingKey);
+        }
         throw error;
       });
 
-      this.pendingRequests.set(pendingKey, fetchPromise);
+      this.pendingRequests.set(pendingKey, { promise: fetchPromise, generation: gen });
     }
 
-    return await this.pendingRequests.get(pendingKey);
+    return await this.pendingRequests.get(pendingKey).promise;
   }
 
   /**
@@ -142,6 +159,7 @@ class CacheStore {
    */
   invalidate(key) {
     this.store.delete(key);
+    this.generation += 1;
     console.log(`[Cache] INVALIDATED: ${key}`);
   }
 
@@ -157,6 +175,7 @@ class CacheStore {
       this.store.delete(key);
     });
     if (invalidatedKeys.length > 0) {
+      this.generation += 1;
       console.log(`[Cache] INVALIDATED PATTERN: ${pattern} (${invalidatedKeys.length} entries)`);
     }
   }
@@ -167,6 +186,7 @@ class CacheStore {
   clear() {
     const count = this.store.size;
     this.store.clear();
+    this.generation += 1;
     console.log(`[Cache] CLEARED: ${count} entries`);
   }
 

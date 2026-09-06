@@ -3,7 +3,7 @@ import { MessageSquare, Phone, User, Hexagon, Plus, Home, List, Wallet2 } from '
 
 
 
-const NavItem = ({ icon, label, isActive, href, badge }) => (
+const NavItem = ({ icon, label, isActive, href, badge = undefined }) => (
   <a
     href={href}
     className="flex flex-col items-center justify-center relative flex-1 h-full gap-1 transition-all"

@@ -28,11 +28,16 @@ const UserManagementPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    username: string;
+    email: string;
+    balance: number;
+    role: 'user' | 'admin';
+  }>({
     username: '',
     email: '',
     balance: 0,
-    role: 'user' as const,
+    role: 'user',
   });
 
   // Fetch users on component mount

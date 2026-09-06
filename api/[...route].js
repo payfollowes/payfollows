@@ -1,3 +1,10 @@
+// Scheduled provider syncs (Vercel Cron -> /api/admin/cron/sync-providers) can run for
+// minutes. Vercel's default function duration is 60s; raise this env var on paid plans
+// (e.g. 300) so a full sync can complete. Leave unset/60 on Hobby to avoid deploy errors.
+export const config = {
+  maxDuration: Number(process.env.CRON_MAX_DURATION_SECONDS || 60),
+};
+
 const HEALTH_PATHS = new Set(['/api/health', '/health']);
 const ENV_CHECK_PATHS = new Set(['/api/env-check', '/env-check']);
 

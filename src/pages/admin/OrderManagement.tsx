@@ -22,6 +22,7 @@ const statusOptions = [
 interface OrderWithDetails extends Order {
   service?: Service;
   user?: UserProfile;
+  updated_at?: string | null;
 }
 
 const OrderManagementPage: React.FC = () => {

@@ -52,7 +52,7 @@ export const chatAPI = {
       .order('updated_at', { ascending: false })
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data || []) as ChatChannelWithProfile[];
+    return (data || []) as unknown as ChatChannelWithProfile[];
   },
 
   async upsertChannel(userId: string, platform: ChatPlatformId) {

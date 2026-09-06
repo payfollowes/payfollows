@@ -289,7 +289,7 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth] Event:', event, 'Session:', !!session);
 
-      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      if (event === 'SIGNED_OUT' || (event as string) === 'USER_DELETED') {
         setHasSession(false);
         setAuthRecoveryMessage(null);
         persistCurrentUser(null);

@@ -30,7 +30,7 @@ const DashboardPage: React.FC = () => {
                 (window as Window).requestIdleCallback(() => task(), { timeout: 2000 });
                 return;
             }
-            window.setTimeout(task, 350);
+            (window as Window).setTimeout(task, 350);
         };
 
         const loadData = async () => {

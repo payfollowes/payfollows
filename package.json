@@ -36,6 +36,8 @@
     "@testing-library/react": "^15.0.0",
     "@testing-library/react-hooks": "^8.0.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.21",
     "baseline-browser-mapping": "^2.9.11",
