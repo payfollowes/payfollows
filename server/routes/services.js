@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase, supabaseConfigured, supabaseAdmin, supabaseAdminConfigured } from '../lib/supabaseServer.js';
 import { adminCache } from '../lib/cache.js';
+import { invalidateServiceCaches } from './integrations.js';
 
 const router = express.Router();
 const PAGE_SIZE = 1000;
@@ -132,8 +133,8 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Invalidate cache so next fetch gets fresh data
-    adminCache.invalidate('admin:services');
+    // Invalidate all cached views (admin list, public catalog, provider mappings)
+    invalidateServiceCaches();
 
     return res.status(201).json(data);
   } catch (err) {
@@ -185,8 +186,8 @@ router.patch('/:id', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Invalidate cache
-    adminCache.invalidate('admin:services');
+    // Invalidate all cached views (admin list, public catalog, provider mappings)
+    invalidateServiceCaches();
 
     return res.json(data[0] || {});
   } catch (err) {
@@ -214,8 +215,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Invalidate cache
-    adminCache.invalidate('admin:services');
+    // Invalidate all cached views (admin list, public catalog, provider mappings)
+    invalidateServiceCaches();
 
     return res.status(204).send();
   } catch (err) {

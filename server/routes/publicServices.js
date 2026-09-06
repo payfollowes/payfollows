@@ -76,8 +76,11 @@ router.get('/', async (req, res) => {
 
     const age = Date.now() - startTime;
 
-    // Add cache control headers for HTTP-level caching
-    res.set('Cache-Control', 'public, max-age=600'); // 10 minutes
+    // Force revalidation so a browser/CDN never serves a pre-write snapshot:
+    // admin edits (prices, completion times) must reach customers immediately.
+    // The in-memory globalCache still shields the DB, and Express ETags turn
+    // unchanged responses into cheap 304s.
+    res.set('Cache-Control', 'max-age=0, must-revalidate'); // revalidate every request
     res.set('X-Cache-Source', 'server');
     res.set('X-Response-Time-Ms', String(age));
 

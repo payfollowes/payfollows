@@ -9,8 +9,7 @@ import {
 import { AUTH_COOKIE_NAMES } from '../lib/authCookies.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import { validateRequest, validateQuery, validateParams, schemas } from '../lib/validation.js';
-import { globalCache, adminCache } from '../lib/cache.js';
-import { invalidateProviderServicesCache } from './integrations.js';
+import { invalidateServiceCaches } from './integrations.js';
 
 const router = express.Router();
 const MAX_DECIMAL_10_2 = 99999999.99;
@@ -250,12 +249,6 @@ const providerServicesHasTimeTextColumn = async () => {
   }
   providerServicesTimeTextProbe = { at: Date.now(), available };
   return available;
-};
-
-const invalidateServiceCaches = () => {
-  invalidateProviderServicesCache();
-  globalCache.invalidate('public:services');
-  adminCache.invalidate('admin:services');
 };
 
 const getEmbeddedObject = (value) => {

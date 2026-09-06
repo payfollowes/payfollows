@@ -2,6 +2,7 @@ import express from 'express';
 import { supabaseAdmin, supabaseAdminConfigured } from '../lib/supabaseServer.js';
 import { validateRequest, validateQuery, schemas } from '../lib/validation.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
+import CacheStore, { globalCache, adminCache } from '../lib/cache.js';
 
 const router = express.Router();
 const SUPABASE_QUERY_TIMEOUT_MS = 12000;
@@ -9,13 +10,25 @@ const PROVIDER_SERVICES_CACHE_TTL_MS = 60000;
 const PAGED_QUERY_SIZE = 1000;
 const PAGED_QUERY_MAX_ROWS = 50000;
 
-let providerServicesCache = {
-  expiresAt: 0,
-  value: null,
-};
+// Generation-guarded in-memory cache (60s TTL) for the provider-services snapshot.
+// Uses CacheStore so invalidations bump a generation counter: an in-flight query
+// that started before a write can no longer repopulate the cache with a stale
+// snapshot afterwards (see server/lib/cache.test.js for the race regression test).
+const providerServicesCache = new CacheStore(PROVIDER_SERVICES_CACHE_TTL_MS, SUPABASE_QUERY_TIMEOUT_MS);
 
 export function invalidateProviderServicesCache() {
-  providerServicesCache = { expiresAt: 0, value: null };
+  providerServicesCache.invalidate('provider-services');
+}
+
+/**
+ * Invalidate every cached view of the service catalog after any write that
+ * changes services, provider mappings, or rates. Single choke point so no
+ * write path can leave one of the caches stale.
+ */
+export function invalidateServiceCaches() {
+  invalidateProviderServicesCache();
+  globalCache.invalidate('public:services');
+  adminCache.invalidate('admin:services');
 }
 
 const getApiKeyFromRequest = (req) => {
@@ -215,54 +228,56 @@ router.get(
       return res.status(503).json(errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable'));
     }
 
-    if (providerServicesCache.expiresAt > Date.now() && providerServicesCache.value) {
-      return res.json(successResponse({ providerServices: providerServicesCache.value, cached: true }));
-    }
-
     const hasTimeTextColumn = await providerServicesHasTimeTextColumn();
 
-    const { data: providerServices, error } = await fetchAllRows(
-      (from, to) =>
-        supabaseAdmin
-          .from('provider_services')
-          .select(`
-            id,
-            provider_id,
-            provider_service_id,
-            provider_rate,
-            our_rate,
-            min_quantity,
-            max_quantity,
-            status,
-            service_id,
-            ${hasTimeTextColumn
-              ? 'completion_time_text, completion_time_override, completion_time_override_hours,'
-              : ''}
-            services (
+    const fetchProviderServices = async () => {
+      const { data: providerServices, error } = await fetchAllRows(
+        (from, to) =>
+          supabaseAdmin
+            .from('provider_services')
+            .select(`
               id,
-              name,
-              category,
-              description,
-              completion_time,
-              status
-            )
-          `)
-          .range(from, to),
-      'provider services query'
-    );
+              provider_id,
+              provider_service_id,
+              provider_rate,
+              our_rate,
+              min_quantity,
+              max_quantity,
+              status,
+              service_id,
+              ${hasTimeTextColumn
+                ? 'completion_time_text, completion_time_override, completion_time_override_hours,'
+                : ''}
+              services (
+                id,
+                name,
+                category,
+                description,
+                completion_time,
+                status
+              )
+            `)
+            .range(from, to),
+        'provider services query'
+      );
 
-    if (error) {
-      console.error('[Server] Error fetching provider services:', error);
-      return res.json(successResponse({ providerServices: [] }));
-    }
+      if (error) {
+        console.error('[Server] Error fetching provider services:', error);
+        throw new Error(error.message || 'Failed to fetch provider services');
+      }
 
-    providerServicesCache = {
-      expiresAt: Date.now() + PROVIDER_SERVICES_CACHE_TTL_MS,
-      value: providerServices || [],
+      console.log('[Server] Provider services fetched:', providerServices.length, 'rows');
+      return providerServices || [];
     };
 
-    console.log('[Server] Provider services fetched:', (providerServices || []).length, 'rows');
-    return res.json(successResponse({ providerServices: providerServices || [] }));
+    try {
+      const providerServices = await providerServicesCache.get('provider-services', fetchProviderServices);
+      return res.json(successResponse({ providerServices }));
+    } catch (error) {
+      // Cold-cache DB failure: degrade to an empty list without caching (previous behavior).
+      console.error('[Server] Provider services fetch failed:', error);
+      return res.json(successResponse({ providerServices: [] }));
+    }
   })
 );
 
