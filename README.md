@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="/artifacts/qa/admin-dashboard.png" />
 </div>
@@ -170,3 +171,6 @@ This project is private and proprietary.
 ## Support
 
 For issues and questions, contact the development team.
+=======
+# payfollows
+>>>>>>> e989aa117435384ed96703c4a157634c877ba2ba
