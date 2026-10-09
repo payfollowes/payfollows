@@ -38,6 +38,25 @@ const getAuthClient = () => {
   return null;
 };
 
+const verifySessionToken = async (token) => {
+  const authClient = getAuthClient();
+  if (!authClient) {
+    throw new Error('AUTH_UNAVAILABLE');
+  }
+
+  const { data, error } = await withTimeout(
+    authClient.auth.getUser(token),
+    AUTH_VERIFY_TIMEOUT_MS,
+    'auth getUser'
+  );
+
+  if (error || !data?.user) {
+    throw new Error('INVALID_TOKEN');
+  }
+
+  return data.user;
+};
+
 router.post('/session', asyncHandler(async (req, res) => {
   const accessToken = String(req.body?.accessToken || '').trim();
   const refreshToken = String(req.body?.refreshToken || '').trim();
@@ -51,36 +70,19 @@ router.post('/session', asyncHandler(async (req, res) => {
     );
   }
 
-  const authClient = getAuthClient();
-  if (authClient) {
-    try {
-      const { data, error } = await withTimeout(
-        authClient.auth.getUser(accessToken),
-        AUTH_VERIFY_TIMEOUT_MS,
-        'auth getUser'
-      );
-      if (error || !data?.user) {
-        clearAuthCookies(res);
-        return res.status(401).json(
-          errorResponse('INVALID_TOKEN', 'Invalid access token', { cookieConfig: getAuthCookieConfig() })
-        );
-      }
-    } catch (error) {
-      console.warn('[Auth] Skipping token verification due to timeout.', error);
-      setAuthCookies(res, {
-        accessToken,
-        refreshToken,
-        expiresAt: Number.isFinite(expiresAt) ? expiresAt : undefined,
-        expiresIn: Number.isFinite(expiresIn) ? expiresIn : undefined,
-      });
-      return res.status(200).json(
-        successResponse({
-          cookieConfig: getAuthCookieConfig(),
-          verified: false,
-          warning: 'Token verification timed out; cookies set without server-side validation.',
-        })
+  try {
+    await verifySessionToken(accessToken);
+  } catch (error) {
+    clearAuthCookies(res);
+    if (error?.message === 'AUTH_UNAVAILABLE') {
+      return res.status(503).json(
+        errorResponse('AUTH_UNAVAILABLE', 'Authentication is not configured on this server.', { cookieConfig: getAuthCookieConfig() })
       );
     }
+
+    return res.status(401).json(
+      errorResponse('INVALID_TOKEN', 'Invalid access token', { cookieConfig: getAuthCookieConfig() })
+    );
   }
 
   setAuthCookies(res, {
@@ -113,42 +115,26 @@ router.get('/session', asyncHandler(async (req, res) => {
 
   const authClient = getAuthClient();
   if (!authClient) {
-    return res.status(200).json(
-      successResponse({ sessionPresent: true, expiresAt, cookieConfig: getAuthCookieConfig() })
+    return res.status(503).json(
+      errorResponse('AUTH_UNAVAILABLE', 'Authentication is not configured on this server.')
     );
   }
 
   try {
-    const { data, error } = await withTimeout(
-      authClient.auth.getUser(accessToken),
-      AUTH_VERIFY_TIMEOUT_MS,
-      'auth getUser'
-    );
-    if (error || !data?.user) {
-      clearAuthCookies(res);
-      return res.status(200).json(
-        successResponse({ sessionPresent: false, cookieConfig: getAuthCookieConfig() })
-      );
-    }
-
+    const user = await verifySessionToken(accessToken);
     return res.status(200).json(
       successResponse({
         sessionPresent: true,
         expiresAt,
         cookieConfig: getAuthCookieConfig(),
-        user: { id: data.user.id, email: data.user.email || null },
+        user: { id: user.id, email: user.email || null },
         verified: true,
       })
     );
   } catch (error) {
-    console.warn('[Auth] Session verification timed out, returning cached session.', error);
-    return res.status(200).json(
-      successResponse({
-        sessionPresent: true,
-        expiresAt,
-        cookieConfig: getAuthCookieConfig(),
-        verified: false,
-      })
+    clearAuthCookies(res);
+    return res.status(401).json(
+      errorResponse('INVALID_TOKEN', 'Invalid or expired access token', { cookieConfig: getAuthCookieConfig() })
     );
   }
 

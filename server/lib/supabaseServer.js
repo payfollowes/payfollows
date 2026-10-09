@@ -15,10 +15,12 @@ process.env.SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   findEnvBySuffix(['_SUPABASE_URL']);
 
+if (process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn('[Supabase] Ignoring public-prefixed service-role key. Use only server-side SUPABASE_SERVICE_ROLE_KEY.');
+}
+
 process.env.SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
   findEnvBySuffix(['_SUPABASE_SERVICE_ROLE_KEY', '_SUPABASE_SECRET_KEY']);
 
 process.env.VITE_SUPABASE_ANON_KEY =

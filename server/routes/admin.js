@@ -10,8 +10,11 @@ import { AUTH_COOKIE_NAMES } from '../lib/authCookies.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import { validateRequest, validateQuery, validateParams, schemas } from '../lib/validation.js';
 import { invalidateServiceCaches } from './integrations.js';
+import { requireAuth, requireAdmin, requireCronSecret } from '../lib/authz.js';
 
 const router = express.Router();
+router.use(requireAuth);
+
 const MAX_DECIMAL_10_2 = 99999999.99;
 const MAX_INT32 = 2147483647;
 
@@ -2616,16 +2619,7 @@ router.patch('/provider-quality-ratings/:id', async (req, res) => {
 // Guarded by CRON_SECRET: when that env var is set, Vercel automatically sends it
 // as "Authorization: Bearer <CRON_SECRET>" on cron invocations.
 // Runs the sync in-process (no HTTP loopback), so it works inside serverless too.
-router.all('/cron/sync-providers', async (req, res) => {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) {
-    return res.status(503).json(errorResponse('CRON_NOT_CONFIGURED', 'CRON_SECRET env var is not set - configure it to enable the scheduled sync.'));
-  }
-  const authHeader = req.headers['authorization'] || req.headers['x-cron-secret'] || '';
-  const provided = String(authHeader).startsWith('Bearer ') ? String(authHeader).slice(7) : String(authHeader);
-  if (provided !== expected) {
-    return res.status(401).json(errorResponse('INVALID_CRON_SECRET', 'Invalid cron secret.'));
-  }
+router.all('/cron/sync-providers', requireCronSecret, async (req, res) => {
   try {
     const summary = await runScheduledProviderSync();
     return res.json(successResponse({ ok: true, message: 'Scheduled provider sync completed.', ...summary }));

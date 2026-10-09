@@ -3,7 +3,7 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/admin/cron/sync-providers", "schedule": "0 */6 * * *" }
+    { "path": "/api/admin/cron/sync-providers", "schedule": "0 0 * * *" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/[...route].js" },

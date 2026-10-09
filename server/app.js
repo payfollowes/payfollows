@@ -14,6 +14,35 @@ const app = express();
 
 app.set('trust proxy', 1);
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const isAllowed = allowedOrigins.length === 0
+      ? origin === 'http://localhost:3000' || origin === 'http://localhost:5173' || origin.endsWith('.vercel.app')
+      : allowedOrigins.includes(origin);
+
+    if (isAllowed) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Origin not allowed by CORS policy'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 180,
@@ -23,17 +52,16 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-
-// Explicit CORS configuration for Vercel
-const corsOptions = {
-  origin: true, // Allow any origin (or configure specific domains in production)
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-
 app.use(cors(corsOptions));
+app.use('/webhook/fastpay', express.raw({ type: '*/*', limit: '2mb' }));
+app.use('/api/webhook/fastpay', express.raw({ type: '*/*', limit: '2mb' }));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 

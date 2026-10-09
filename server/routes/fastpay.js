@@ -3,12 +3,13 @@ import crypto from 'crypto';
 import { supabaseAdmin, supabaseAdminConfigured } from '../lib/supabaseServer.js';
 import { validateRequest, schemas } from '../lib/validation.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
+import { requireAuth } from '../lib/authz.js';
 
 const router = express.Router();
 
 // POST /api/fastpay/create-order
 // Body: { paymentId, amount, orderId(opt), customerEmail, customerName, returnUrl, cancelUrl }
-router.post('/create-order', validateRequest(schemas.createOrderSchema), asyncHandler(async (req, res) => {
+router.post('/create-order', requireAuth, validateRequest(schemas.createOrderSchema), asyncHandler(async (req, res) => {
   if (!supabaseAdminConfigured || !supabaseAdmin) {
     return res.status(503).json(
       errorResponse('SUPABASE_NOT_CONFIGURED', 'Supabase admin client not configured')
