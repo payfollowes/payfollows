@@ -41,8 +41,8 @@ export function HowItWorks() {
           <div className="pointer-events-none absolute left-0 right-0 top-9 hidden h-px bg-gradient-to-r from-transparent via-primary-500/40 to-transparent lg:block" />
           {STEPS.map((step, i) => (
             <div key={step.title} className="step-card relative text-center">
-              <div className="relative z-10 mx-auto flex h-18 w-18 items-center justify-center">
-                <span className="flex h-18 w-18 items-center justify-center rounded-2xl border border-primary-500/30 bg-[#121627] p-5 shadow-glow-sm">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary-500/30 bg-[#121627] p-4 shadow-glow-sm">
                   <step.icon className="h-7 w-7 text-primary-400" />
                 </span>
                 <span className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary-gradient font-display text-xs font-bold text-white">

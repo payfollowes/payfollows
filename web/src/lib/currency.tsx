@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 interface CurrencyContextValue {
   currency: string;
@@ -36,13 +36,11 @@ const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefine
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<string>('USD');
 
-  // localStorage is only available after mount; initialize lazily.
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('selectedCurrency');
-      if (saved) setCurrencyState(saved);
-    }
-  });
+  // Restore the saved currency after mount (localStorage is browser-only).
+  useEffect(() => {
+    const saved = window.localStorage.getItem('selectedCurrency');
+    if (saved) setCurrencyState(saved);
+  }, []);
 
   const setCurrency = (code: string) => {
     setCurrencyState(code);
