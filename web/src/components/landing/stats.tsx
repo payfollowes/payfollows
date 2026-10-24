@@ -59,7 +59,7 @@ export function StatsBand() {
   return (
     <section ref={root} className="py-16">
       <div className="container">
-        <div className="grid gap-5 rounded-3xl border border-white/[0.08] bg-white/[0.03] p-10 backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-4">
+        <div className="glow-panel grid gap-5 rounded-3xl border border-[rgba(167,139,250,0.14)] bg-ink-850/85 p-10 backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((stat) => (
             <div key={stat.label} className="stat-item text-center">
               <p className="font-display text-4xl font-bold gradient-text">

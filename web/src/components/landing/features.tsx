@@ -60,22 +60,27 @@ export function Features() {
       <div className="container">
         <SectionHeading
           eyebrow="Why PayFollows"
-          title="Everything you need to grow, in one panel"
-          subtitle="A complete growth engine trusted by thousands of creators, agencies and resellers worldwide."
+          title="Why creators stick with us"
+          subtitle="We combine clarity, trust and high-performing delivery to produce results that actually matter."
         />
+
         <div className="feature-grid mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
             <motion.div
               key={feature.title}
               whileHover={{ y: -6 }}
               transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              className="feature-card group rounded-2xl border border-white/[0.08] bg-white/[0.04] p-7 backdrop-blur-xl card-hover"
+              className="feature-card group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
             >
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-gradient text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-110">
+              {/* Ambient corner glow */}
+              <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-primary-600/25 blur-3xl transition-opacity duration-500 group-hover:bg-primary-500/35" />
+              <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary-400/50 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+              <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-gradient text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-110">
                 <feature.icon className="h-6 w-6" />
               </span>
-              <h3 className="mt-5 font-display text-lg font-semibold text-white">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
+              <h3 className="relative mt-5 font-display text-lg font-bold text-white">{feature.title}</h3>
+              <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -95,7 +100,7 @@ export function SectionHeading({
 }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <span className="inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-300">
+      <span className="inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-300">
         {eyebrow}
       </span>
       <h2 className="mt-5 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl text-balance">

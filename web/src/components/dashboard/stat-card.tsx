@@ -30,14 +30,14 @@ export function StatCard({ title, value, subtitle, icon: Icon, tone = 'purple', 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Card className="card-hover p-5">
+      <Card className="pf-card-hover rounded-3xl p-5">
         <div className="flex items-start justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
-            <p className="mt-2 truncate font-display text-2xl font-bold text-white">{value}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
+            <p className="mt-2 truncate font-display text-2xl font-bold text-white tabular">{value}</p>
             {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
           </div>
-          <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', TONES[tone])}>
+          <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', TONES[tone])}>
             <Icon className="h-5 w-5" />
           </span>
         </div>

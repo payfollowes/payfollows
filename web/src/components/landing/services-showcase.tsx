@@ -86,7 +86,7 @@ export function ServicesShowcase() {
               key={service.platform}
               whileHover={{ y: -8 }}
               transition={{ type: 'spring', stiffness: 280, damping: 20 }}
-              className="service-card group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-7 backdrop-blur-xl card-hover"
+              className="service-card group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
             >
               <div
                 className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${service.gradient} opacity-15 blur-2xl transition-opacity group-hover:opacity-30`}

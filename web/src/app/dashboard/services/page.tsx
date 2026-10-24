@@ -23,6 +23,11 @@ export default function ServicesPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setSearch(q);
+  }, []);
+
+  useEffect(() => {
     servicesAPI
       .getMergedServices()
       .then((rows) => setServices(rows.filter((s) => s.status === 'active' && s.rate_per_1000 > 0)))

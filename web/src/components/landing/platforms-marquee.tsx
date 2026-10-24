@@ -12,7 +12,7 @@ export function PlatformsMarquee() {
         {items.map((platform, i) => (
           <div
             key={`${platform.id}-${i}`}
-            className="flex h-14 w-44 shrink-0 items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-5 backdrop-blur-xl transition-colors hover:border-primary-500/40"
+            className="flex h-14 w-44 shrink-0 items-center justify-center gap-3 rounded-2xl border border-[rgba(167,139,250,0.12)] bg-ink-850/80 px-5 backdrop-blur-xl transition-colors hover:border-primary-500/40"
           >
             <span
               className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${platform.gradient} text-sm`}

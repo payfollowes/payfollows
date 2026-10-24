@@ -11,8 +11,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-space-grotesk)', 'var(--font-inter)', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-space-grotesk)', 'var(--font-jakarta)', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -33,6 +33,23 @@ const config: Config = {
           700: '#6d28d9',
           800: '#5b21b6',
           900: '#4c1d95',
+        },
+        // PayFollows fintech brand ramp (reference orange roles -> violet)
+        brand: {
+          DEFAULT: '#7c3aed',
+          bright: '#9f67ff',
+          soft: '#b990ff',
+          lavender: '#c4b5fd',
+          deep: '#5b21b6',
+        },
+        // Midnight-indigo surface ramp (reference espresso roles)
+        ink: {
+          950: '#0a0712',
+          900: '#120d1f',
+          850: '#181127',
+          800: '#221a36',
+          700: '#2c2347',
+          600: '#3a2f5c',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -77,18 +94,26 @@ const config: Config = {
         sm: 'calc(var(--radius) - 8px)',
         xl: 'calc(var(--radius) + 4px)',
         '2xl': 'calc(var(--radius) + 8px)',
+        '3xl': 'calc(var(--radius) + 14px)',
       },
       boxShadow: {
-        'glow-sm': '0 0 14px rgba(124,58,237,0.45)',
-        glow: '0 0 28px rgba(124,58,237,0.5)',
-        'glow-lg': '0 0 60px rgba(124,58,237,0.35)',
-        card: '0 10px 40px -12px rgba(0,0,0,0.55)',
+        'glow-xs': '0 0 10px rgba(139, 92, 246, 0.35)',
+        'glow-sm': '0 0 18px rgba(124, 58, 237, 0.45)',
+        glow: '0 0 32px rgba(124, 58, 237, 0.5)',
+        'glow-lg': '0 0 70px rgba(124, 58, 237, 0.38)',
+        'glow-brand': '0 10px 34px -8px rgba(124, 58, 237, 0.65)',
+        card: '0 14px 44px -16px rgba(0, 0, 0, 0.65)',
+        'card-hover': '0 22px 60px -18px rgba(124, 58, 237, 0.35)',
       },
       backgroundImage: {
-        'primary-gradient': 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%)',
-        'radial-fade': 'radial-gradient(ellipse at top, rgba(124,58,237,0.18), transparent 55%)',
+        'primary-gradient': 'linear-gradient(135deg, #7c3aed 0%, #9f67ff 52%, #b990ff 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #7c3aed 0%, #9f67ff 52%, #b990ff 100%)',
+        'brand-gradient-soft': 'linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(159,103,255,0.12) 100%)',
+        'radial-fade': 'radial-gradient(ellipse at top, rgba(124, 58, 237, 0.20), transparent 58%)',
+        'ambient-glow':
+          'radial-gradient(900px 520px at 82% -12%, rgba(124, 58, 237, 0.16), transparent 60%), radial-gradient(720px 460px at -5% 8%, rgba(59, 130, 246, 0.08), transparent 60%)',
         'grid-pattern':
-          'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)',
+          'linear-gradient(rgba(167, 139, 250, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 139, 250, 0.05) 1px, transparent 1px)',
       },
       backgroundSize: {
         grid: '44px 44px',
@@ -117,6 +142,10 @@ const config: Config = {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        'glow-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(124,58,237,0.0)' },
+          '50%': { boxShadow: '0 0 24px 2px rgba(124,58,237,0.35)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -124,6 +153,7 @@ const config: Config = {
         float: 'float 6s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
         marquee: 'marquee 32s linear infinite',
+        'glow-pulse': 'glow-pulse 3.2s ease-in-out infinite',
       },
     },
   },

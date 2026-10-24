@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/plus-jakarta-sans';
 import '@fontsource-variable/space-grotesk';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#080b14',
+  themeColor: '#0a0712',
   width: 'device-width',
   initialScale: 1,
 };

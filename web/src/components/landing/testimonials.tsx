@@ -55,7 +55,7 @@ export function Testimonials() {
             {REVIEWS.map((review) => (
               <article
                 key={review.name}
-                className="shrink-0 grow-0 basis-full sm:basis-[46%] lg:basis-[31.5%] rounded-2xl border border-white/[0.08] bg-white/[0.04] p-7 backdrop-blur-xl card-hover"
+                className="shrink-0 grow-0 basis-full sm:basis-[46%] lg:basis-[31.5%] rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
               >
                 <Quote className="h-8 w-8 text-primary-500/50" />
                 <div className="mt-4 flex gap-0.5">
