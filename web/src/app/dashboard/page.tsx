@@ -181,12 +181,12 @@ export default function DashboardOverviewPage() {
                     className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-white">{a.title}</p>
-                      <Badge variant={a.severity === 'critical' ? 'destructive' : a.severity === 'warning' ? 'warning' : 'info'}>
-                        {a.severity || 'info'}
+                      <p className="text-sm font-semibold text-white">{a.subject}</p>
+                      <Badge variant={a.type === 'warning' ? 'warning' : a.type === 'success' ? 'success' : 'info'}>
+                        {a.type || 'info'}
                       </Badge>
                     </div>
-                    <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{a.content}</p>
+                    <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{a.message}</p>
                     <p className="mt-2 text-[10px] text-muted-foreground/70">{formatDate(a.created_at)}</p>
                   </motion.div>
                 ))}

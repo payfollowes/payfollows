@@ -99,13 +99,17 @@ export interface SupportTicket {
   user?: { username: string; email: string };
 }
 
+export type AnnouncementType = 'info' | 'warning' | 'success';
+export type AnnouncementStatus = 'draft' | 'published' | 'archived';
+
 export interface Announcement {
   id: string;
-  title: string;
-  content: string;
-  severity?: 'info' | 'success' | 'warning' | 'critical';
-  is_active?: boolean;
+  subject: string;
+  message: string;
+  type: AnnouncementType;
+  status: AnnouncementStatus;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface ProviderServiceLink {

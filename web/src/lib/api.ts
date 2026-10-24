@@ -458,7 +458,7 @@ export const announcementAPI = {
       supabase
         .from('announcements')
         .select('*')
-        .or('is_active.is.null,is_active.eq.true')
+        .eq('status', 'published')
         .order('created_at', { ascending: false })
         .limit(10),
       'active announcements'
@@ -687,9 +687,22 @@ export const adminAPI = {
     return (data as Announcement[]) ?? [];
   },
 
-  async createAnnouncement(input: { title: string; content: string; severity?: string }) {
+  async createAnnouncement(input: {
+    subject: string;
+    message: string;
+    type?: Announcement['type'];
+  }) {
     const { data, error } = await runQuery(
-      supabase.from('announcements').insert({ ...input, is_active: true }).select().single(),
+      supabase
+        .from('announcements')
+        .insert({
+          subject: input.subject,
+          message: input.message,
+          type: input.type ?? 'info',
+          status: 'published',
+        })
+        .select()
+        .single(),
       'create announcement'
     );
     if (error) throw error;

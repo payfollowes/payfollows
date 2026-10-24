@@ -51,7 +51,11 @@ export default function AdminAnnouncementsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const created = await adminAPI.createAnnouncement(form);
+      const created = await adminAPI.createAnnouncement({
+        subject: form.title,
+        message: form.content,
+        type: form.severity as Announcement['type'],
+      });
       setItems((prev) => [created, ...prev]);
       toast.success('Announcement published');
       setOpen(false);
@@ -64,9 +68,10 @@ export default function AdminAnnouncementsPage() {
   };
 
   const toggleActive = async (a: Announcement) => {
+    const nextStatus = a.status === 'published' ? 'draft' : 'published';
     try {
-      await adminAPI.updateAnnouncement(a.id, { is_active: !a.is_active });
-      setItems((prev) => prev.map((x) => (x.id === a.id ? { ...x, is_active: !x.is_active } : x)));
+      await adminAPI.updateAnnouncement(a.id, { status: nextStatus });
+      setItems((prev) => prev.map((x) => (x.id === a.id ? { ...x, status: nextStatus } : x)));
       toast.success('Announcement updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed');
@@ -112,7 +117,6 @@ export default function AdminAnnouncementsPage() {
                     <SelectItem value="info">Info</SelectItem>
                     <SelectItem value="success">Success</SelectItem>
                     <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -148,24 +152,24 @@ export default function AdminAnnouncementsPage() {
                     <Megaphone className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-display text-base font-semibold text-white">{a.title}</p>
+                    <p className="font-display text-base font-semibold text-white">{a.subject}</p>
                     <p className="text-xs text-muted-foreground">{formatDate(a.created_at)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={a.severity === 'critical' ? 'destructive' : a.severity === 'warning' ? 'warning' : a.severity === 'success' ? 'success' : 'info'}>
-                    {a.severity}
+                  <Badge variant={a.type === 'warning' ? 'warning' : a.type === 'success' ? 'success' : 'info'}>
+                    {a.type}
                   </Badge>
                   <div className="flex items-center gap-2">
-                    <Switch checked={a.is_active !== false} onCheckedChange={() => toggleActive(a)} />
-                    <span className="text-xs text-muted-foreground">{a.is_active === false ? 'Hidden' : 'Live'}</span>
+                    <Switch checked={a.status === 'published'} onCheckedChange={() => toggleActive(a)} />
+                    <span className="text-xs text-muted-foreground">{a.status === 'published' ? 'Live' : 'Hidden'}</span>
                   </div>
                   <Button variant="destructive" size="icon" onClick={() => remove(a)}>
                     <Trash2 />
                   </Button>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-foreground/85">{a.content}</p>
+              <p className="mt-4 text-sm leading-relaxed text-foreground/85">{a.message}</p>
             </Card>
           ))}
         </div>
