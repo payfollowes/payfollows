@@ -165,13 +165,18 @@ CREATE TABLE IF NOT EXISTS public.platform_summary (
 );
 
 -- Helper for generating stable API keys for user-facing integrations
+-- NOTE: search_path is pinned and uuid_generate_v4 is schema-qualified because
+-- this function runs inside the SECURITY DEFINER signup trigger whose default
+-- search_path does not include the `extensions` schema (caused signup 500s).
 CREATE OR REPLACE FUNCTION public.generate_api_key()
-RETURNS TEXT AS $$
+RETURNS TEXT
+SET search_path = public, extensions, pg_catalog
+AS $$
 DECLARE
   generated_key TEXT;
 BEGIN
   LOOP
-    generated_key := 'sk_' || substr(md5(uuid_generate_v4()::text || clock_timestamp()::text || random()::text), 1, 32);
+    generated_key := 'sk_' || substr(md5(extensions.uuid_generate_v4()::text || clock_timestamp()::text || random()::text), 1, 32);
     EXIT WHEN NOT EXISTS (
       SELECT 1
       FROM public.user_profiles
@@ -230,7 +235,9 @@ CREATE POLICY "Users can update their own profile"
 
 -- Helper function to check if user is admin (avoids infinite recursion in RLS)
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+SET search_path = public, pg_catalog
+AS $$
 DECLARE
   user_role TEXT;
 BEGIN
@@ -333,14 +340,18 @@ CREATE POLICY "Admins can manage platform summary"
 -- function from another table/event used to crash with
 --   record "new" has no field "raw_user_meta_data"
 -- because NEW there is a row without auth metadata columns - which also broke user deletion.
+-- Trigger function to create a public.user_profiles row on signup.
+-- IMPORTANT: search_path MUST include `extensions` — the api_key column default
+-- calls generate_api_key() -> extensions.uuid_generate_v4(). Without it, GoTrue
+-- signup fails with an uncatchable generic "Database error saving new user" 500.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SET search_path = public, auth, extensions, pg_catalog
+AS $$
 DECLARE
-  base_username TEXT := NULL;
-  candidate_username TEXT := NULL;
+  base_username TEXT;
+  candidate_username TEXT;
   counter INT := 0;
-  has_raw boolean := false;
-  has_user_meta boolean := false;
 BEGIN
   -- Never touch NEW.<field> unless this really is an INSERT into auth.users.
   IF TG_OP <> 'INSERT' OR TG_TABLE_SCHEMA <> 'auth' OR TG_TABLE_NAME <> 'users' THEN
@@ -358,18 +369,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Detect if auth.users has raw_user_meta_data or user_metadata columns
-  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'raw_user_meta_data') INTO has_raw;
-  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'user_metadata') INTO has_user_meta;
-
-  IF has_raw THEN
-    base_username := COALESCE((NEW.raw_user_meta_data->>'username')::text, split_part(NEW.email, '@', 1));
-  ELSIF has_user_meta THEN
-    base_username := COALESCE((NEW.user_metadata->>'username')::text, split_part(NEW.email, '@', 1));
-  ELSE
-    base_username := split_part(NEW.email, '@', 1);
-  END IF;
-
+  base_username := COALESCE(
+    NULLIF(NEW.raw_user_meta_data ->> 'username', ''),
+    split_part(NEW.email, '@', 1)
+  );
   candidate_username := base_username;
 
   -- Ensure username uniqueness: append a numeric suffix if necessary
@@ -381,6 +384,10 @@ BEGIN
   INSERT INTO public.user_profiles (id, email, username)
   VALUES (NEW.id, NEW.email, candidate_username);
 
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Never block auth user creation because of a profile-side issue; log and continue.
+  RAISE WARNING 'handle_new_user failed for %: % (%)', NEW.id, SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
