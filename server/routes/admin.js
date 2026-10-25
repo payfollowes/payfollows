@@ -43,6 +43,14 @@ const clampDecimal10_2 = (value, fallback = 0) => {
   return Number(bounded.toFixed(2));
 };
 
+// Catalog rate columns are DECIMAL(18,6): keep sub-cent provider prices
+// (e.g. 0.0025/1K) instead of collapsing them to zero with 2-dp rounding.
+const clampDecimal18_6 = (value, fallback = 0) => {
+  const parsed = toNumber(value, fallback);
+  const bounded = Math.min(Math.max(parsed, 0), 999999999999.999999);
+  return Number(bounded.toFixed(6));
+};
+
 const clampQuantity = (value, fallback = 1) => {
   const parsed = toInteger(value, fallback);
   return Math.min(Math.max(parsed, 1), MAX_INT32);
@@ -1032,7 +1040,7 @@ const syncProviderCore = async ({ provider_id, markup_percent, categories, categ
       const manualOverride = existingOverrides.get(String(providerServiceId));
       const scrapedTime = completionTimesMap?.get(String(providerServiceId));
       const completionTime = manualOverride?.hours ?? scrapedTime?.hours ?? extractCompletionTimeHours(svc);
-      const providerRate = clampDecimal10_2(rawProviderRate, 0);
+      const providerRate = clampDecimal18_6(rawProviderRate, 0);
       const effectiveMarkup = providerDefaultRule
         ? applyMarginToRate(providerRate, {
             margin_type: providerDefaultRule.margin_type,
@@ -1041,7 +1049,7 @@ const syncProviderCore = async ({ provider_id, markup_percent, categories, categ
             max_margin: providerDefaultRule.max_margin,
           })
         : providerRate * (1 + markupPercent / 100);
-      const ourRate = clampDecimal10_2(effectiveMarkup, providerRate);
+      const ourRate = clampDecimal18_6(effectiveMarkup, providerRate);
       const minQuantity = clampQuantity(rawMinQuantity, 1);
       const maxQuantity = clampQuantity(rawMaxQuantity, Math.max(minQuantity, 10000));
 
