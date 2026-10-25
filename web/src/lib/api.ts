@@ -183,6 +183,18 @@ export const authAPI = {
     return data;
   },
 
+  // Rotates the reseller API key via the authenticated SECURITY DEFINER RPC.
+  // The guard trigger blocks direct client writes of user_profiles.api_key,
+  // so key rotation must go through this RPC.
+  async regenerateApiKey(): Promise<string> {
+    const { data, error } = await runQuery(
+      supabase.rpc('regenerate_api_key'),
+      'regenerate api key'
+    );
+    if (error) throw error;
+    return data as string;
+  },
+
   async signOut() {
     const { error } = await runQuery(supabase.auth.signOut(), 'sign out');
     if (error) throw error;
