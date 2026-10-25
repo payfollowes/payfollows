@@ -425,7 +425,32 @@ export const ordersAPI = {
 /* Payments                                                            */
 /* ------------------------------------------------------------------ */
 
+export interface PaymentMethodInfo {
+  id: string;
+  name: string;
+  region: string;
+  available: boolean;
+  comingSoon?: boolean;
+  endpoint?: string;
+}
+
 export const paymentsAPI = {
+  // Capability map from the backend: only configured gateways are selectable;
+  // everything else renders as "Coming soon" in the wallet UI.
+  async getMethods(): Promise<PaymentMethodInfo[]> {
+    try {
+      const res = await fetch(apiUrl('/payments/methods'), {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) return [];
+      const body = await res.json();
+      return (body?.data?.methods ?? []) as PaymentMethodInfo[];
+    } catch {
+      return [];
+    }
+  },
+
   async createPayment(amount: number, paymentMethod: string): Promise<Payment> {
     const user = await getAuthenticatedUser();
     const fee = amount * 0.02;
@@ -439,7 +464,7 @@ export const paymentsAPI = {
           fee,
           total,
           payment_method: paymentMethod,
-          payment_provider: 'fastpay',
+          payment_provider: paymentMethod === 'payfast' ? 'payfast' : 'fastpay',
         })
         .select()
         .single(),
@@ -464,6 +489,9 @@ export const paymentsAPI = {
   },
 
   async createGatewayOrder(payment: Payment, profile: UserProfile, method: string) {
+    if (method !== 'fastpay' && method !== 'payfast') {
+      throw new Error('This payment method is not available yet. Please choose a live gateway.');
+    }
     const endpoint = method === 'payfast' ? '/api/payments/payfast' : '/api/fastpay/create-order';
     const res = await apiFetch(endpoint, {
       method: 'POST',

@@ -153,4 +153,44 @@ router.post(
   })
 );
 
+// GET /api/payments/methods
+// Public capability map: tells the wallet UI which gateways are actually
+// configured, so unconfigured options render as "Coming soon" instead of
+// silently falling through to a different gateway. Never exposes secrets.
+router.get(
+  '/methods',
+  asyncHandler(async (_req, res) => {
+    const fastpayAvailable = Boolean(
+      (process.env.FASTPAY_API_KEY || process.env.VITE_FASTPAY_API_KEY) &&
+        (process.env.FASTPAY_MERCHANT_ID || process.env.VITE_FASTPAY_MERCHANT_ID)
+    );
+    const payfastAvailable = Boolean(
+      process.env.PAYFAST_MERCHANT_ID && process.env.PAYFAST_MERCHANT_KEY
+    );
+
+    const methods = [
+      {
+        id: 'fastpay',
+        name: 'FastPay',
+        region: 'MENA / Global',
+        available: fastpayAvailable,
+        endpoint: '/api/fastpay/create-order',
+      },
+      {
+        id: 'payfast',
+        name: 'PayFast',
+        region: 'ZA / Global',
+        available: payfastAvailable,
+        endpoint: '/api/payments/payfast',
+      },
+      { id: 'credit_card', name: 'Credit / Debit Card', region: 'Global', available: false, comingSoon: true },
+      { id: 'easypaisa', name: 'EasyPaisa', region: 'Pakistan', available: false, comingSoon: true },
+      { id: 'paypal', name: 'PayPal', region: 'Global', available: false, comingSoon: true },
+      { id: 'crypto', name: 'Crypto (USDT / BTC)', region: 'Global', available: false, comingSoon: true },
+    ];
+
+    return res.status(200).json(successResponse({ methods }));
+  })
+);
+
 export default router;

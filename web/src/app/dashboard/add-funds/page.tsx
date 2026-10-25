@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Wallet, CheckCircle2, XCircle, CreditCard, Smartphone, Bitcoin, Landmark } from 'lucide-react';
+import { Wallet, CheckCircle2, XCircle, CreditCard, Smartphone, Bitcoin, Landmark, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -19,13 +19,20 @@ import { useCurrency } from '@/lib/currency';
 import type { BalanceTransaction, Payment } from '@/lib/types';
 import { cn, formatDateTime } from '@/lib/utils';
 
-const METHODS = [
-  { id: 'credit_card', name: 'Credit / Debit Card', icon: CreditCard, region: 'Global' },
+// Display catalog. Availability is decided by the backend capability map
+// (/api/payments/methods) so unconfigured gateways never fake a checkout.
+const METHOD_CATALOG = [
+  { id: 'fastpay', name: 'FastPay', icon: Zap, region: 'MENA / Global' },
   { id: 'payfast', name: 'PayFast', icon: Landmark, region: 'ZA / Global' },
+  { id: 'credit_card', name: 'Credit / Debit Card', icon: CreditCard, region: 'Global' },
   { id: 'easypaisa', name: 'EasyPaisa', icon: Smartphone, region: 'Pakistan' },
   { id: 'paypal', name: 'PayPal', icon: Wallet, region: 'Global' },
   { id: 'crypto', name: 'Crypto (USDT / BTC)', icon: Bitcoin, region: 'Global' },
 ];
+
+// Used only if the capability endpoint is unreachable: FastPay remains the
+// known-working default gateway.
+const FALLBACK_AVAILABILITY: Record<string, boolean> = { fastpay: true };
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
 
@@ -33,12 +40,14 @@ function AddFundsInner() {
   const params = useSearchParams();
   const { profile, refreshProfile } = useAuth();
   const { formatAmount } = useCurrency();
-  const [method, setMethod] = useState('credit_card');
+  const [method, setMethod] = useState('fastpay');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
   const [ledger, setLedger] = useState<BalanceTransaction[]>([]);
+  const [availability, setAvailability] = useState<Record<string, boolean>>(FALLBACK_AVAILABILITY);
+  const [methodsLoaded, setMethodsLoaded] = useState(false);
 
   useEffect(() => {
     if (params.get('success') === 'true') {
@@ -57,7 +66,21 @@ function AddFundsInner() {
       .listTransactions(25)
       .then(setLedger)
       .catch(() => setLedger([]));
+    paymentsAPI.getMethods().then((methods) => {
+      if (methods.length === 0) return; // keep the FastPay fallback
+      const map: Record<string, boolean> = {};
+      methods.forEach((m) => {
+        map[m.id] = m.available;
+      });
+      setAvailability(map);
+      // Default to the first configured gateway instead of a disabled tile.
+      const firstLive = methods.find((m) => m.available);
+      if (firstLive) setMethod(firstLive.id);
+      setMethodsLoaded(true);
+    });
   }, [params, refreshProfile]);
+
+  const selectedAvailable = availability[method] !== false;
 
   const amountNum = Number(amount) || 0;
   const fee = amountNum * 0.02;
@@ -67,6 +90,9 @@ function AddFundsInner() {
     e.preventDefault();
     if (amountNum < 5) return toast.error('Minimum deposit is $5.00');
     if (!profile) return toast.error('Profile not loaded');
+    if (!selectedAvailable) {
+      return toast.error('This payment method is not available yet — please choose a live gateway.');
+    }
 
     setLoading(true);
     try {
@@ -94,24 +120,48 @@ function AddFundsInner() {
           <CardContent>
             <form onSubmit={submit} className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {METHODS.map((m) => (
-                  <button
-                    type="button"
-                    key={m.id}
-                    onClick={() => setMethod(m.id)}
-                    className={cn(
-                      'rounded-2xl border p-4 text-left transition-all',
-                      method === m.id
-                        ? 'border-primary-500/60 bg-primary-500/10 shadow-glow-sm'
-                        : 'border-white/[0.08] bg-white/[0.04] hover:border-white/20'
-                    )}
-                  >
-                    <m.icon className={cn('h-6 w-6', method === m.id ? 'text-primary-400' : 'text-muted-foreground')} />
-                    <p className="mt-3 text-sm font-semibold text-white">{m.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{m.region}</p>
-                  </button>
-                ))}
+                {METHOD_CATALOG.map((m) => {
+                  const available = availability[m.id] !== false;
+                  const active = method === m.id;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      disabled={!available}
+                      onClick={() => available && setMethod(m.id)}
+                      aria-disabled={!available}
+                      className={cn(
+                        'relative rounded-2xl border p-4 text-left transition-all',
+                        active && available
+                          ? 'border-primary-500/60 bg-primary-500/10 shadow-glow-sm'
+                          : available
+                            ? 'border-white/[0.08] bg-white/[0.04] hover:border-white/20'
+                            : 'cursor-not-allowed border-white/[0.05] bg-white/[0.02] opacity-55'
+                      )}
+                    >
+                      {!available && (
+                        <span className="absolute right-3 top-3 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-300">
+                          Soon
+                        </span>
+                      )}
+                      <m.icon
+                        className={cn(
+                          'h-6 w-6',
+                          active && available ? 'text-primary-400' : 'text-muted-foreground'
+                        )}
+                      />
+                      <p className="mt-3 text-sm font-semibold text-white">{m.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{m.region}</p>
+                    </button>
+                  );
+                })}
               </div>
+              {methodsLoaded && !Object.values(availability).some(Boolean) && (
+                <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200/90">
+                  No payment gateway is configured yet. Deposits will open as soon as the provider credentials are
+                  added.
+                </p>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="amount">Amount (USD)</Label>
@@ -145,7 +195,13 @@ function AddFundsInner() {
                 <Row label="Total payable" value={formatAmount(total)} bold />
               </div>
 
-              <Button type="submit" size="lg" className="w-full" loading={loading} disabled={amountNum < 5}>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                loading={loading}
+                disabled={amountNum < 5 || !selectedAvailable}
+              >
                 <Wallet /> Continue to Payment
               </Button>
             </form>
