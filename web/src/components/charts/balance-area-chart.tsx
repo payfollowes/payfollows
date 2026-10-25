@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import type { TrendPoint } from '@/lib/analytics';
 
 interface ChartTooltipProps {
@@ -24,7 +25,7 @@ function ChartTooltip({ active, payload, formatter }: ChartTooltipProps) {
     <div className="rounded-2xl border border-[rgba(167,139,250,0.25)] bg-ink-900/95 px-4 py-3 shadow-card backdrop-blur-xl">
       <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
         {point.fullLabel}
-        <span className="text-primary-300">↗</span>
+        <TrendingUp className="h-3 w-3 text-primary-300" />
       </p>
       <p className="mt-1 font-display text-base font-bold text-white tabular">{formatter(point.value)}</p>
     </div>

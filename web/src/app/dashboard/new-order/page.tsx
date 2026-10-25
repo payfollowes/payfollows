@@ -172,7 +172,7 @@ function NewOrderInner() {
               )}
             >
               {p.id === 'all' ? (
-                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-[11px]">✦</span>
+                <Sparkles className="h-3.5 w-3.5" />
               ) : (
                 <PlatformBrandIcon platformId={p.id} size="sm" className="h-7 w-7 border-0 bg-transparent" />
               )}

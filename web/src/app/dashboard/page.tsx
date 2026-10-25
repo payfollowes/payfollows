@@ -55,7 +55,7 @@ export default function DashboardOverviewPage() {
   const popular = useMemo(() => services.filter((s) => s.status === 'active').slice(0, 6), [services]);
 
   return (
-    <DashboardShell variant="user" title={`Welcome back, ${profile?.username ?? 'friend'} 👋`}>
+    <DashboardShell variant="user" title={`Welcome back, ${profile?.username ?? 'friend'}`}>
       {/* ── Premium fintech composition: center workspace + right finance rail ── */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* Center column */}

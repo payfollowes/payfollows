@@ -143,7 +143,7 @@ export function DashboardTopbar({ variant }: TopbarProps) {
                 aria-label="Search PayFollows"
               />
               <kbd className="hidden shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground sm:inline-flex">
-                ⌘ + Space
+                Ctrl + Space
               </kbd>
             </div>
           </form>
@@ -197,7 +197,7 @@ export function DashboardTopbar({ variant }: TopbarProps) {
         <NotificationBell />
 
         <button
-          onClick={() => toast('Dark mode is curated for the PayFollows experience', { icon: '🌙' })}
+          onClick={() => toast('Dark mode is curated for the PayFollows experience', { icon: <Moon className="h-4 w-4 text-primary-300" /> })}
           aria-label="Theme"
           className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-muted-foreground transition-all hover:text-foreground sm:flex"
         >

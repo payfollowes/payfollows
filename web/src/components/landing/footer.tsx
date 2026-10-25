@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Heart } from 'lucide-react';
 import { Logo } from '@/components/shared/logo';
 
 const COLUMNS = [
@@ -71,8 +72,8 @@ export function LandingFooter() {
               <p className="text-xs text-muted-foreground">
                 © {new Date().getFullYear()} PayFollows. All rights reserved.
               </p>
-              <p className="text-xs text-muted-foreground">
-                Made with <span className="text-primary-400">♥</span> for creators worldwide
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                Made with <Heart className="h-3.5 w-3.5 fill-primary-400 text-primary-400" /> for creators worldwide
               </p>
             </div>
           </div>

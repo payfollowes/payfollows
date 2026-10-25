@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ShoppingCart, Grid3X3 } from 'lucide-react';
+import { Search, ShoppingCart, Grid3X3, Sparkles } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +59,7 @@ export default function ServicesPage() {
               )}
             >
               {p.id === 'all' ? (
-                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-[11px]">✦</span>
+                <Sparkles className="h-3.5 w-3.5" />
               ) : (
                 <PlatformBrandIcon platformId={p.id} size="sm" className="h-7 w-7 border-0 bg-transparent" />
               )}

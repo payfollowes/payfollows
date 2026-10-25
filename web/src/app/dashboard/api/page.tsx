@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { KeyRound, Copy, Check, Terminal, BookOpen, RefreshCw, AlertTriangle } from 'lucide-react';
+import { KeyRound, Copy, Check, Terminal, BookOpen, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -151,7 +151,10 @@ export default function ApiPage() {
                 <span className="text-sm text-white">{ep.desc}</span>
               </div>
               <p className="mt-2 font-mono text-xs text-muted-foreground">{ep.body}</p>
-              <p className="mt-1 font-mono text-xs text-emerald-300/80">→ {ep.response}</p>
+              <p className="mt-1 flex items-center gap-1.5 font-mono text-xs text-emerald-300/80">
+                <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                {ep.response}
+              </p>
             </div>
           ))}
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
