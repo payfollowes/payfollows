@@ -79,9 +79,12 @@ export default function AdminPaymentsPage() {
                   <TableRow key={p.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{truncateMiddle(p.id, 12)}</TableCell>
                     <TableCell className="text-sm font-medium text-white">{p.user?.username || '—'}</TableCell>
-                    <TableCell className="text-xs capitalize">{p.payment_method?.replace('_', ' ')}</TableCell>
+                    <TableCell className="text-xs capitalize">{(p.payment_method ?? 'manual').replace(/_/g, ' ')}</TableCell>
                     <TableCell className="font-semibold text-white">{formatAmount(p.amount)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatAmount(p.fee)}</TableCell>
+                    {/* Legacy rows may predate the fee column — never render $NaN. */}
+                    <TableCell className="text-sm text-muted-foreground">
+                      {p.fee == null || Number.isNaN(Number(p.fee)) ? '—' : formatAmount(p.fee)}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={

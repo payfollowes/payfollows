@@ -158,7 +158,7 @@ export default function SupportPage() {
                       {ticket.priority || 'medium'}
                     </Badge>
                     <Badge variant={STATUS_VARIANT[ticket.status] || 'secondary'} className="capitalize">
-                      {ticket.status.replace('-', ' ')}
+                      {(ticket.status ?? 'open').replace(/-/g, ' ')}
                     </Badge>
                   </div>
                 </div>

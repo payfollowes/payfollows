@@ -248,7 +248,7 @@ function AddFundsInner() {
                     {payments.slice(0, 8).map((p) => (
                       <TableRow key={p.id}>
                         <TableCell className="font-semibold text-white">{formatAmount(p.amount)}</TableCell>
-                        <TableCell className="text-xs capitalize">{p.payment_method.replace('_', ' ')}</TableCell>
+                        <TableCell className="text-xs capitalize">{(p.payment_method ?? 'manual').replace(/_/g, ' ')}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
@@ -292,10 +292,10 @@ function AddFundsInner() {
                       <li key={tx.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-white">
-                            {tx.description ?? tx.type.replace('_', ' ')}
+                            {tx.description ?? (tx.type ?? 'transaction').replace(/_/g, ' ')}
                           </p>
                           <p className="mt-0.5 text-xs capitalize text-muted-foreground">
-                            {tx.type.replace('_', ' ')} · {formatDateTime(tx.created_at)}
+                            {(tx.type ?? 'transaction').replace(/_/g, ' ')} · {formatDateTime(tx.created_at)}
                           </p>
                         </div>
                         <div className="text-right">

@@ -96,7 +96,7 @@ export default function AdminSupportPage() {
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="capitalize">{ticket.priority || 'medium'}</Badge>
                   <Badge variant={STATUS_VARIANT[ticket.status] || 'secondary'} className="capitalize">
-                    {ticket.status.replace('-', ' ')}
+                    {(ticket.status ?? 'open').replace(/-/g, ' ')}
                   </Badge>
                 </div>
               </div>
