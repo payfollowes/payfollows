@@ -39,10 +39,12 @@ node:http stub (stub-server.mjs) — Supabase REST/RPC/auth + legacy /api
   images. Scroll steps use `behavior:'instant'` because the app ships
   `scroll-behavior:smooth`, which would otherwise animate test jumps and
   never reach deep sections within the waits.
-- **`app.mjs`** — authenticated suite (user + admin): identity, notification
-  bell, referrals, child panels, live chat, drip-feed ordering, orders table,
-  plus admin financials, audit, settings and channel management. Mutation
-  assertions poll `waitForMutation` instead of using fixed sleeps.
+- **`app.mjs`** — authenticated suite (34 checks, user + admin): identity,
+  notification bell, referrals, child panels, live chat, drip-feed ordering,
+  orders table, balance-trend curve shape, plus admin overview head-counts,
+  financials (including rendered bar heights), audit, settings and channel
+  management. Mutation assertions poll `waitForMutation` instead of using
+  fixed sleeps.
 
 Screenshots and JSON results land in `artifacts/` (gitignored).
 
@@ -54,7 +56,7 @@ cd web && npx next build && npx next start -p 3000 -H 0.0.0.0 &
 
 # 2. From the repo root
 node tests/e2e/smoke.mjs           # 21 anonymous checks
-node tests/e2e/app.mjs             # 30 authenticated checks
+node tests/e2e/app.mjs             # 34 authenticated checks
 node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
 ```
 
@@ -69,7 +71,9 @@ node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
 - Never replace the single shared stub with per-role restarts; never drop the
   `access-control-expose-headers` CORS header; `route.fulfill` strips custom
   headers on this Playwright/Chromium combination — the real HTTP stub plus
-  Next rewrite is the only working interception pattern here.
+  Next rewrite is the only working interception pattern here. Both
+  `{head:true}` count requests and GETs with a `count=exact` Prefer header
+  must answer with `content-range: 0-(N-1)/N`.
 - Harness noise (aborted analytics, navigation-driven `ERR_ABORTED`, the
   intentional 404-document check) is filtered explicitly in the diagnostics
   gates.

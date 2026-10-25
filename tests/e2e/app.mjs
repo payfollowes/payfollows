@@ -69,6 +69,20 @@ async function suite(role) {
       assert('mark-all-read clears badge', badgeAfter === 0, `count=${badgeAfter}`);
       await page.keyboard.press('Escape');
 
+      // Balance trend must be a real curve, not a flat line (sparse-order
+      // accounts previously collapsed every point to one Y coordinate).
+      const trendShape = await page.evaluate(() => {
+        const path = document.querySelector('.recharts-area-curve');
+        const nums = (path?.getAttribute('d') || '').match(/-?\d+\.?\d*/g) || [];
+        const ys = nums.slice(1).filter((_, i) => i % 2 === 1).map(Number);
+        return { points: ys.length, distinct: new Set(ys.map((y) => Math.round(y))).size };
+      });
+      assert(
+        'balance trend renders a shaped curve, not flat',
+        trendShape.points >= 6 && trendShape.distinct >= 4,
+        JSON.stringify(trendShape)
+      );
+
       /* ------------------------------------------------------- Referrals */
       await goto('/dashboard/referrals');
       await page.waitForSelector('text=PFTEST001');
@@ -138,6 +152,19 @@ async function suite(role) {
       await goto('/admin');
       await wait(1200);
       assert('admin area loads', page.url().includes('/admin'));
+      // HEAD-count stats must resolve from the stub's content-range headers.
+      const overviewStats = await page.evaluate(() => {
+        const out = {};
+        document.querySelectorAll('p').forEach((p) => {
+          const title = p.textContent.trim().toUpperCase();
+          if (['TOTAL USERS', 'TOTAL ORDERS', 'REVENUE', 'SERVICES'].includes(title)) {
+            out[title] = p.parentElement.querySelector('p.tabular')?.textContent.trim();
+          }
+        });
+        return out;
+      });
+      assert('admin overview counts resolve via head requests', overviewStats['TOTAL USERS'] === '3' && overviewStats['TOTAL ORDERS'] === '2' && overviewStats['SERVICES'] === '3', JSON.stringify(overviewStats));
+      assert('admin overview revenue from completed payments', overviewStats['REVENUE'] === '$21.00', JSON.stringify(overviewStats));
       await shot('20-admin-overview.png');
 
       /* -------------------------------------------------------- Financial */
@@ -147,6 +174,16 @@ async function suite(role) {
       assert('financial totals computed (charges 369.95)', finText.includes('369.95'));
       assert('financial net profit computed (108.00)', finText.includes('108.00'));
       assert('earnings table populated', finText.includes('3.60'));
+      // CSS bar chart: percentage heights must actually resolve to pixels
+      // (regression guard — items-end once collapsed every bar to 0px).
+      const barHeights = await page
+        .locator('.flex.h-44 [style*="height"]')
+        .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+      assert(
+        'daily revenue bars render with non-zero height',
+        barHeights.length >= 2 && barHeights.every((h) => h > 4),
+        JSON.stringify(barHeights)
+      );
       await shot('21-admin-financial.png');
 
       /* ------------------------------------------------------------- Audit */

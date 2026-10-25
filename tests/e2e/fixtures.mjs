@@ -273,6 +273,11 @@ export const platformEarnings = [
   },
 ];
 
+export const payments = [
+  { id: 'pay-0001', user_id: USER_ID, amount: 12, status: 'completed', created_at: NOW },
+  { id: 'pay-0002', user_id: USER_ID, amount: 9, status: 'completed', created_at: NOW },
+];
+
 export const platformSummary = [
   {
     date: '2026-10-23',

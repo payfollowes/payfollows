@@ -187,6 +187,35 @@ export function createStubServer() {
       return send(res, 200, body);
     }
 
+    // GET list responses honor Prefer: count=exact by exposing the total in
+    // content-range, exactly like PostgREST (supabase-js reads .count from it).
+    const sendRows = (rows) => {
+      const headers = {};
+      if (String(req.headers.prefer || '').includes('count=exact')) {
+        headers['content-range'] = `0-${Math.max(0, rows.length - 1)}/${rows.length}`;
+      }
+      return send(res, 200, rows, headers);
+    };
+
+    // Generic PostgREST head counts (supabase-js { head: true, count:'exact' }).
+    // notifications keeps its own unread-specific HEAD inside its GET case.
+    if (req.method === 'HEAD' && kind !== 'notifications') {
+      const tableCounts = {
+        user_profiles: 3, // user, admin and child profiles
+        orders: fx.orders.length,
+        payments: fx.payments.length,
+        services: fx.services.length,
+      };
+      const n = tableCounts[kind] ?? 0;
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        ...corsHeaders,
+        'content-range': `0-${Math.max(0, n - 1)}/${n}`,
+        'content-length': '0',
+      });
+      return res.end();
+    }
+
     // GET reads
     switch (kind) {
       case 'user_profiles': {
@@ -216,31 +245,33 @@ export function createStubServer() {
         return send(res, 200, state.notifications);
       }
       case 'referral_rewards':
-        return send(res, 200, fx.referralRewards);
+        return sendRows(fx.referralRewards);
       case 'orders':
-        return send(res, 200, fx.orders);
+        return sendRows(fx.orders);
+      case 'payments':
+        return sendRows(fx.payments);
       case 'services':
-        return send(res, 200, fx.services);
+        return sendRows(fx.services);
       case 'chat_channels':
-        return send(res, 200, role === 'admin' ? fx.chatChannels : [fx.chatChannels[0]]);
+        return sendRows(role === 'admin' ? fx.chatChannels : [fx.chatChannels[0]]);
       case 'chat_messages':
-        return send(res, 200, fx.chatMessages);
+        return sendRows(fx.chatMessages);
       case 'app_settings':
         return send(res, 200, [{ id: 'platform', config: state.settings }]);
       case 'platform_earnings':
-        return send(res, 200, fx.platformEarnings);
+        return sendRows(fx.platformEarnings);
       case 'platform_summary':
-        return send(res, 200, fx.platformSummary);
+        return sendRows(fx.platformSummary);
       case 'payment_logs':
-        return send(res, 200, fx.paymentLogs);
+        return sendRows(fx.paymentLogs);
       case 'provider_payouts':
-        return send(res, 200, fx.providerPayouts);
+        return sendRows(fx.providerPayouts);
       case 'audit_logs':
-        return send(res, 200, fx.auditLogs);
+        return sendRows(fx.auditLogs);
       case 'announcements':
-        return send(res, 200, []);
+        return sendRows([]);
       default:
-        return send(res, 200, []);
+        return sendRows([]);
     }
   };
 
