@@ -1,52 +1,22 @@
 'use client';
 
-import { useRef } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, UserPlus, TrendingUp, Instagram, Youtube, Star } from 'lucide-react';
-import { gsap, useGSAP } from '@/lib/gsap';
+
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 const TRUST_BRANDS = ['Lumina', 'PromptPilot', 'Screen', 'EverMedia', 'TaskFlow'];
 
+const fadeUp = (delay: number) => ({
+  initial: { opacity: 0, y: 34 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.75, delay, ease: EASE },
+});
+
 export function Hero() {
-  const root = useRef<HTMLDivElement>(null);
-
-  useGSAP(
-    () => {
-      const ctx = gsap.context(() => {
-        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-        tl.from('.hero-badge', { y: 26, opacity: 0, duration: 0.7 })
-          .from('.hero-line', { y: 44, opacity: 0, duration: 0.85, stagger: 0.12 }, '-=0.35')
-          .from('.hero-sub', { y: 22, opacity: 0, duration: 0.6 }, '-=0.45')
-          .from('.hero-cta', { y: 22, opacity: 0, duration: 0.6, stagger: 0.1 }, '-=0.35')
-          .from('.hero-trust', { y: 18, opacity: 0, duration: 0.55 }, '-=0.3')
-          .from('.hero-mockup', { y: 56, opacity: 0, scale: 0.95, duration: 1 }, '-=0.85')
-          .from('.float-card', { y: 28, opacity: 0, scale: 0.9, duration: 0.7, stagger: 0.14 }, '-=0.6');
-
-        gsap.utils.toArray<HTMLElement>('.float-card').forEach((card, i) => {
-          gsap.to(card, {
-            y: i % 2 === 0 ? -13 : 11,
-            duration: 3.4 + i * 0.45,
-            repeat: -1,
-            yoyo: true,
-            ease: 'sine.inOut',
-          });
-        });
-
-        gsap.utils.toArray<HTMLElement>('.hero-particle').forEach((p, i) => {
-          gsap.fromTo(
-            p,
-            { opacity: 0.2, scale: 0.8 },
-            { opacity: 1, scale: 1.3, duration: 2.4 + i * 0.3, repeat: -1, yoyo: true, ease: 'sine.inOut' }
-          );
-        });
-      }, root);
-      return () => ctx.revert();
-    },
-    { scope: root }
-  );
-
   return (
-    <section ref={root} className="relative overflow-hidden pb-20 pt-36 lg:pt-44">
+    <section className="relative overflow-hidden pb-20 pt-36 lg:pt-44">
       {/* Ambient background */}
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern bg-grid [mask-image:radial-gradient(ellipse_70%_55%_at_50%_30%,black,transparent)]" />
       <div className="pointer-events-none absolute -top-44 left-1/2 h-[520px] w-[880px] -translate-x-1/2 rounded-full bg-primary-600/22 blur-[150px]" />
@@ -57,33 +27,47 @@ export function Hero() {
         { top: '64%', left: '92%' },
         { top: '38%', left: '50%' },
       ].map((pos, i) => (
-        <span
+        <motion.span
           key={i}
-          className="hero-particle pointer-events-none absolute h-2 w-2 rounded-full bg-primary-400 shadow-glow-sm"
+          className="pointer-events-none absolute h-2 w-2 rounded-full bg-primary-400 shadow-glow-sm"
           style={pos}
+          animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.3, 0.85] }}
+          transition={{ duration: 2.6 + i * 0.3, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
 
       <div className="container relative text-center">
-        {/* Badge */}
-        <div className="hero-badge inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-semibold text-primary-300">
-          <Sparkles className="h-3.5 w-3.5" />
-          Onboarding new creators this week
-        </div>
+        <motion.div {...fadeUp(0.05)}>
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-semibold text-primary-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Onboarding new creators this week
+          </div>
+        </motion.div>
 
-        {/* Headline */}
-        <h1 className="mx-auto mt-7 max-w-4xl font-display text-5xl font-bold leading-[1.06] tracking-tight text-balance sm:text-6xl lg:text-7xl">
-          <span className="hero-line block text-white">Grow faster.</span>
-          <span className="hero-line block gradient-text">Convert better.</span>
-        </h1>
+        <motion.h1
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.85, delay: 0.15, ease: EASE }}
+          className="mx-auto mt-7 max-w-4xl font-display text-5xl font-bold leading-[1.06] tracking-tight text-balance sm:text-6xl lg:text-7xl"
+        >
+          <span className="block text-white">Grow faster.</span>
+          <span className="block gradient-text">Convert better.</span>
+        </motion.h1>
 
-        <p className="hero-sub mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+        <motion.p
+          {...fadeUp(0.35)}
+          className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+        >
           The premium SMM panel for creators, agencies and resellers. Instagram followers, TikTok views,
           YouTube subscribers — delivered at record speed with the cheapest rates online.
-        </p>
+        </motion.p>
 
-        {/* CTAs */}
-        <div className="hero-cta mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.48, ease: EASE }}
+          className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row"
+        >
           <Link
             href="/register"
             className="group inline-flex h-14 items-center gap-2 rounded-full bg-primary-gradient px-8 text-base font-bold text-white btn-glow transition-all hover:brightness-110 active:scale-[0.98]"
@@ -97,10 +81,12 @@ export function Hero() {
           >
             <UserPlus className="h-5 w-5" /> Register Free
           </Link>
-        </div>
+        </motion.div>
 
-        {/* Trust row */}
-        <div className="hero-trust mt-10">
+        <motion.div
+          {...fadeUp(0.6)}
+          className="mt-10"
+        >
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Trusted by 10k+ creators worldwide
           </p>
@@ -111,13 +97,17 @@ export function Hero() {
               </span>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Dashboard preview */}
-        <div className="hero-mockup relative mx-auto mt-16 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 56, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 1, delay: 0.72, ease: EASE }}
+          className="relative mx-auto mt-16 max-w-4xl"
+        >
           <div className="glow-panel rounded-[28px]">
             <div className="overflow-hidden rounded-[28px] border border-[rgba(167,139,250,0.18)] bg-ink-900/90 shadow-glow-lg backdrop-blur-2xl">
-              {/* browser chrome */}
               <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
@@ -128,7 +118,6 @@ export function Hero() {
               </div>
 
               <div className="grid gap-4 p-5 sm:grid-cols-3">
-                {/* Mini balance chart */}
                 <div className="rounded-2xl border border-white/[0.07] bg-ink-850 p-5 sm:col-span-2">
                   <div className="flex items-center justify-between">
                     <div className="text-left">
@@ -150,7 +139,6 @@ export function Hero() {
                   </div>
                 </div>
 
-                {/* Mini wallet */}
                 <div className="rounded-2xl border border-primary-500/25 bg-gradient-to-br from-primary-700 to-brand-bright p-5 text-left">
                   <p className="text-xs font-semibold text-white/70">My Wallet</p>
                   <p className="mt-2 font-display text-2xl font-bold text-white tabular">$12,850.00</p>
@@ -168,7 +156,11 @@ export function Hero() {
           </div>
 
           {/* Floating cards */}
-          <div className="float-card absolute -left-4 top-16 z-20 hidden w-44 rounded-2xl border border-white/10 bg-ink-900/95 p-4 shadow-card backdrop-blur-xl sm:block lg:-left-12">
+          <motion.div
+            className="absolute -left-4 top-16 z-20 hidden w-44 rounded-2xl border border-white/10 bg-ink-900/95 p-4 shadow-card backdrop-blur-xl sm:block lg:-left-12"
+            animate={{ y: [-13, 11, -13] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400">
                 <TrendingUp className="h-5 w-5" />
@@ -178,9 +170,13 @@ export function Hero() {
                 <p className="text-[11px] text-muted-foreground">Follower increase</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="float-card absolute -right-4 bottom-10 z-20 hidden w-48 rounded-2xl border border-white/10 bg-ink-900/95 p-4 shadow-card backdrop-blur-xl sm:block lg:-right-12">
+          <motion.div
+            className="absolute -right-4 bottom-10 z-20 hidden w-48 rounded-2xl border border-white/10 bg-ink-900/95 p-4 shadow-card backdrop-blur-xl sm:block lg:-right-12"
+            animate={{ y: [11, -13, 11] }}
+            transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
+          >
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
                 <Instagram className="h-5 w-5" />
@@ -190,9 +186,13 @@ export function Hero() {
                 <p className="text-[11px] text-success">▲ 123.56% this week</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="float-card absolute -top-5 right-16 z-20 hidden rounded-2xl border border-white/10 bg-ink-900/95 px-4 py-3 shadow-card backdrop-blur-xl md:block">
+          <motion.div
+            className="absolute -top-5 right-16 z-20 hidden rounded-2xl border border-white/10 bg-ink-900/95 px-4 py-3 shadow-card backdrop-blur-xl md:block"
+            animate={{ y: [-10, 10, -10] }}
+            transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
+          >
             <div className="flex items-center gap-2 text-left">
               <Youtube className="h-4 w-4 text-red-500" />
               <div>
@@ -200,14 +200,12 @@ export function Hero() {
                 <p className="font-display text-sm font-bold text-success tabular">+15,234</p>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
-      {/* Bottom ambient glow band */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-primary-600/25 via-primary-600/8 to-transparent blur-2xl" />
 
-      {/* Hidden rating anchor for accessibility */}
       <span className="sr-only">
         <Star /> Top rated SMM panel with 12k+ user rating
       </span>

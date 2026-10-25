@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PLATFORMS } from '@/lib/constants';
+import { PlatformBrandIcon, platformFromCategory } from '@/components/shared/platform-icon';
 import { servicesAPI } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import type { Service } from '@/lib/types';
@@ -57,9 +58,11 @@ export default function ServicesPage() {
                   : 'border border-white/[0.08] bg-white/[0.04] text-muted-foreground hover:text-white'
               )}
             >
-              <span className={cn('flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br text-[10px]', p.gradient)}>
-                {p.emoji}
-              </span>
+              {p.id === 'all' ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-[11px]">✦</span>
+              ) : (
+                <PlatformBrandIcon platformId={p.id} size="sm" className="h-7 w-7 border-0 bg-transparent" />
+              )}
               {p.label}
             </button>
           ))}
@@ -90,11 +93,16 @@ export default function ServicesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((service) => (
-            <Card key={service.id} className="card-hover flex flex-col p-5">
-              <Badge variant="secondary" className="mb-3 w-fit">
-                {service.category}
-              </Badge>
+          {filtered.map((service) => {
+            const platformId = platformFromCategory(service.category);
+            return (
+            <Card key={service.id} className="pf-card-hover flex flex-col p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <Badge variant="secondary" className="w-fit">
+                  {service.category}
+                </Badge>
+                {platformId && <PlatformBrandIcon platformId={platformId} size="sm" />}
+              </div>
               <p className="line-clamp-2 min-h-[40px] text-sm font-semibold text-white">{service.name}</p>
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span>Min {service.min_quantity.toLocaleString()}</span>
@@ -112,7 +120,8 @@ export default function ServicesPage() {
                 </Button>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </DashboardShell>

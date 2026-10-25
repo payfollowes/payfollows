@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, ShieldCheck, Clock, Headphones, Wallet, RefreshCw } from 'lucide-react';
-import { gsap, useGSAP } from '@/lib/gsap';
+import { Reveal, staggerContainer, staggerItem } from '@/components/shared/reveal';
 
 const FEATURES = [
   {
@@ -39,41 +38,33 @@ const FEATURES = [
 ];
 
 export function Features() {
-  const root = useRef<HTMLDivElement>(null);
-
-  useGSAP(
-    () => {
-      gsap.from('.feature-card', {
-        y: 48,
-        opacity: 0,
-        duration: 0.75,
-        stagger: 0.1,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: '.feature-grid', start: 'top 82%' },
-      });
-    },
-    { scope: root }
-  );
-
   return (
-    <section id="features" ref={root} className="relative py-24">
+    <section id="features" className="relative scroll-mt-24 py-20 lg:py-24">
       <div className="container">
-        <SectionHeading
-          eyebrow="Why PayFollows"
-          title="Why creators stick with us"
-          subtitle="We combine clarity, trust and high-performing delivery to produce results that actually matter."
-        />
+        <Reveal>
+          <SectionHeading
+            eyebrow="Why PayFollows"
+            title="Why creators stick with us"
+            subtitle="We combine clarity, trust and high-performing delivery to produce results that actually matter."
+          />
+        </Reveal>
 
-        <div className="feature-grid mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+          className="feature-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {FEATURES.map((feature) => (
             <motion.div
               key={feature.title}
+              variants={staggerItem}
               whileHover={{ y: -6 }}
               transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              className="feature-card group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
+              className="group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-colors duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
             >
-              {/* Ambient corner glow */}
-              <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-primary-600/25 blur-3xl transition-opacity duration-500 group-hover:bg-primary-500/35" />
+              <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-primary-600/25 blur-3xl transition-all duration-500 group-hover:bg-primary-500/35" />
               <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary-400/50 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
               <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-gradient text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-110">
@@ -83,7 +74,7 @@ export function Features() {
               <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

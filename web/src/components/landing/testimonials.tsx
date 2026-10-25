@@ -5,6 +5,7 @@ import Autoplay from 'embla-carousel-autoplay';
 import { useRef } from 'react';
 import { Star, Quote } from 'lucide-react';
 import { SectionHeading } from './features';
+import { Reveal } from '@/components/shared/reveal';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const REVIEWS = [
@@ -42,15 +43,18 @@ export function Testimonials() {
   const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' }, [autoplay.current]);
 
   return (
-    <section id="reviews" className="py-24">
+    <section id="reviews" className="scroll-mt-24 py-20 lg:py-24">
       <div className="container">
-        <SectionHeading
-          eyebrow="Testimonials"
-          title="Loved by creators and agencies"
-          subtitle="Real feedback from thousands of customers scaling their social presence every day."
-        />
+        <Reveal>
+          <SectionHeading
+            eyebrow="Testimonials"
+            title="Loved by creators and agencies"
+            subtitle="Real feedback from thousands of customers scaling their social presence every day."
+          />
+        </Reveal>
 
-        <div className="mt-14 overflow-hidden" ref={emblaRef}>
+        <Reveal className="mt-12 overflow-hidden" >
+          <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-5 px-1">
             {REVIEWS.map((review) => (
               <article
@@ -76,7 +80,8 @@ export function Testimonials() {
               </article>
             ))}
           </div>
-        </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

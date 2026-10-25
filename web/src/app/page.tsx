@@ -5,6 +5,7 @@ import { Features } from '@/components/landing/features';
 import { ServicesShowcase } from '@/components/landing/services-showcase';
 import { HowItWorks } from '@/components/landing/how-it-works';
 import { StatsBand } from '@/components/landing/stats';
+import { Pricing } from '@/components/landing/pricing';
 import { Testimonials } from '@/components/landing/testimonials';
 import { Faq } from '@/components/landing/faq';
 import { CtaBanner } from '@/components/landing/cta';
@@ -20,6 +21,7 @@ export default function LandingPage() {
       <StatsBand />
       <HowItWorks />
       <Features />
+      <Pricing />
       <Testimonials />
       <Faq />
       <CtaBanner />

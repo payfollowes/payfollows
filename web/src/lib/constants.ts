@@ -47,21 +47,19 @@ export const ADMIN_NAV: NavItem[] = [
 export interface Platform {
   id: string;
   label: string;
-  gradient: string;
-  emoji: string;
 }
 
 export const PLATFORMS: Platform[] = [
-  { id: 'all', label: 'All Services', gradient: 'from-violet-500 to-fuchsia-500', emoji: '✦' },
-  { id: 'Instagram', label: 'Instagram', gradient: 'from-pink-500 to-rose-500', emoji: '📸' },
-  { id: 'TikTok', label: 'TikTok', gradient: 'from-slate-200 to-slate-400', emoji: '🎵' },
-  { id: 'Twitter', label: 'Twitter / X', gradient: 'from-sky-400 to-blue-600', emoji: '𝕏' },
-  { id: 'Facebook', label: 'Facebook', gradient: 'from-blue-500 to-indigo-600', emoji: '👍' },
-  { id: 'YouTube', label: 'YouTube', gradient: 'from-red-500 to-rose-600', emoji: '▶️' },
-  { id: 'Telegram', label: 'Telegram', gradient: 'from-sky-400 to-cyan-600', emoji: '✈️' },
-  { id: 'Spotify', label: 'Spotify', gradient: 'from-green-400 to-emerald-600', emoji: '🎧' },
-  { id: 'Snapchat', label: 'Snapchat', gradient: 'from-yellow-300 to-amber-400', emoji: '👻' },
-  { id: 'LinkedIn', label: 'LinkedIn', gradient: 'from-blue-600 to-sky-700', emoji: '💼' },
+  { id: 'all', label: 'All Services' },
+  { id: 'Instagram', label: 'Instagram' },
+  { id: 'TikTok', label: 'TikTok' },
+  { id: 'Twitter', label: 'Twitter / X' },
+  { id: 'Facebook', label: 'Facebook' },
+  { id: 'YouTube', label: 'YouTube' },
+  { id: 'Telegram', label: 'Telegram' },
+  { id: 'Spotify', label: 'Spotify' },
+  { id: 'Snapchat', label: 'Snapchat' },
+  { id: 'LinkedIn', label: 'LinkedIn' },
 ];
 
 export const ORDER_STATUSES = [

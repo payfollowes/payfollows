@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PLATFORMS } from '@/lib/constants';
+import { PlatformBrandIcon } from '@/components/shared/platform-icon';
 import { ordersAPI, servicesAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCurrency } from '@/lib/currency';
@@ -156,9 +157,11 @@ function NewOrderInner() {
                   : 'border border-white/[0.08] bg-white/[0.04] text-muted-foreground hover:text-white'
               )}
             >
-              <span className={cn('flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br text-[10px]', p.gradient)}>
-                {p.emoji}
-              </span>
+              {p.id === 'all' ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-[11px]">✦</span>
+              ) : (
+                <PlatformBrandIcon platformId={p.id} size="sm" className="h-7 w-7 border-0 bg-transparent" />
+              )}
               {p.label}
             </button>
           ))}

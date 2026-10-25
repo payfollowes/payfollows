@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
-import { gsap, ScrollTrigger, useGSAP } from '@/lib/gsap';
+import { useEffect, useRef, useState } from 'react';
+import { useInView, animate } from 'framer-motion';
+import { Reveal } from '@/components/shared/reveal';
 
 const STATS = [
   { value: 128400, suffix: '+', label: 'Orders Delivered' },
@@ -12,63 +13,43 @@ const STATS = [
 
 function Counter({ value, suffix, decimals = 0 }: { value: number; suffix: string; decimals?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const [display, setDisplay] = useState(0);
 
-  useGSAP(
-    () => {
-      if (!ref.current) return;
-      const obj = { val: 0 };
-      gsap.to(obj, {
-        val: value,
-        duration: 2.2,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: ref.current, start: 'top 88%', once: true },
-        onUpdate: () => {
-          if (ref.current) {
-            ref.current.textContent =
-              obj.val.toLocaleString('en-US', {
-                minimumFractionDigits: decimals,
-                maximumFractionDigits: decimals,
-              }) + suffix;
-          }
-        },
-      });
-    },
-    { scope: ref }
+  useEffect(() => {
+    if (!inView) return;
+    const controls = animate(0, value, {
+      duration: 2,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setDisplay(v),
+    });
+    return () => controls.stop();
+  }, [inView, value]);
+
+  return (
+    <span ref={ref} className="tabular">
+      {display.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      {suffix}
+    </span>
   );
-
-  return <span ref={ref}>0{suffix}</span>;
 }
 
 export function StatsBand() {
-  const root = useRef<HTMLDivElement>(null);
-
-  useGSAP(
-    () => {
-      gsap.from('.stat-item', {
-        y: 36,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.12,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: root.current, start: 'top 85%' },
-      });
-    },
-    { scope: root }
-  );
-
   return (
-    <section ref={root} className="py-16">
+    <section className="py-16">
       <div className="container">
-        <div className="glow-panel grid gap-5 rounded-3xl border border-[rgba(167,139,250,0.14)] bg-ink-850/85 p-10 backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-4">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="stat-item text-center">
-              <p className="font-display text-4xl font-bold gradient-text">
-                <Counter value={stat.value} suffix={stat.suffix} decimals={stat.decimals ?? 0} />
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+        <Reveal>
+          <div className="glow-panel grid gap-8 rounded-3xl border border-[rgba(167,139,250,0.14)] bg-ink-850/85 p-10 backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-4">
+            {STATS.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="font-display text-4xl font-bold gradient-text">
+                  <Counter value={stat.value} suffix={stat.suffix} decimals={stat.decimals ?? 0} />
+                </p>
+                <p className="mt-2 text-sm font-medium text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );

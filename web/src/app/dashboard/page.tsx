@@ -23,6 +23,7 @@ import { PromoCard } from '@/components/dashboard/fintech/promo-card';
 import { SpendingCard } from '@/components/dashboard/fintech/spending-card';
 import { WalletPanel } from '@/components/dashboard/fintech/wallet-panel';
 import { RecentTransactions } from '@/components/dashboard/fintech/recent-transactions';
+import { PlatformBrandIcon, platformFromCategory } from '@/components/shared/platform-icon';
 import { useAuth } from '@/lib/auth';
 import { useCurrency } from '@/lib/currency';
 import { announcementAPI, ordersAPI, servicesAPI } from '@/lib/api';
@@ -114,9 +115,15 @@ export default function DashboardOverviewPage() {
                         href={`/dashboard/new-order?service=${encodeURIComponent(service.id)}`}
                         className="pf-card-hover block h-full rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5"
                       >
-                        <Badge variant="secondary" className="mb-3">
-                          {service.category}
-                        </Badge>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <Badge variant="secondary">{service.category}</Badge>
+                          {platformFromCategory(service.category) && (
+                            <PlatformBrandIcon
+                              platformId={platformFromCategory(service.category) as string}
+                              size="sm"
+                            />
+                          )}
+                        </div>
                         <p className="line-clamp-2 min-h-[40px] text-sm font-semibold text-white">{service.name}</p>
                         <div className="mt-3 flex items-center justify-between">
                           <span className="font-display text-base font-bold text-primary-300 tabular">
