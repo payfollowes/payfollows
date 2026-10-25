@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useInView, animate } from 'framer-motion';
+import { animate } from 'framer-motion';
 import { Reveal } from '@/components/shared/reveal';
 
 const STATS = [
@@ -11,9 +11,61 @@ const STATS = [
   { value: 18, suffix: 'K+', label: 'Happy Customers' },
 ];
 
+/**
+ * IO + synchronous scroll/resize detection. Mirrors shared/reveal.tsx:
+ * framer's useInView relies on IO alone, which can miss crossings during
+ * instant programmatic scrolling (tests, anchor jumps) and leaves the
+ * counter stranded at zero. The safety timeout covers pre-listener scrolls.
+ */
+function useSafeInView<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const inTriggerZone = () => {
+      const rect = el.getBoundingClientRect();
+      return rect.top < window.innerHeight - 60 && rect.bottom > 60;
+    };
+    if (inTriggerZone()) {
+      setInView(true);
+      return;
+    }
+    const reveal = () => {
+      if (!inTriggerZone()) return;
+      setInView(true);
+      cleanup();
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) reveal();
+      },
+      { rootMargin: '-60px 0px -60px 0px', threshold: 0 }
+    );
+    io.observe(el);
+    window.addEventListener('scroll', reveal, { passive: true, capture: true });
+    window.addEventListener('resize', reveal);
+    const safety = window.setTimeout(reveal, 350);
+
+    function cleanup() {
+      window.clearTimeout(safety);
+      io.disconnect();
+      window.removeEventListener('scroll', reveal, { capture: true });
+      window.removeEventListener('resize', reveal);
+    }
+    return cleanup;
+  }, []);
+
+  return { ref, inView };
+}
+
 function Counter({ value, suffix, decimals = 0 }: { value: number; suffix: string; decimals?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const { ref, inView } = useSafeInView<HTMLSpanElement>();
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {

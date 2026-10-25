@@ -53,7 +53,24 @@ try {
   await page.evaluate(async () => {
     for (let y = 0; y <= document.body.scrollHeight; y += 700) {
       window.scrollTo({ top: y, behavior: 'instant' });
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    // Settle at the bottom so the last sections' observers/state flush
+    // before jumping back to the top.
+    await new Promise((r) => setTimeout(r, 400));
+  });
+
+  // Deterministic backstop: anything still hidden gets scrolled into view
+  // explicitly, with a hard deadline, so frame-sampling races can't flake.
+  await page.evaluate(async () => {
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      const stuck = Array.from(document.querySelectorAll('[data-reveal]')).filter(
+        (el) => !el.hasAttribute('data-reveal-visible')
+      );
+      if (stuck.length === 0) break;
+      stuck[0].scrollIntoView({ block: 'center', behavior: 'instant' });
+      await new Promise((r) => setTimeout(r, 150));
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
   });
