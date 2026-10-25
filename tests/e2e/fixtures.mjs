@@ -273,9 +273,81 @@ export const platformEarnings = [
   },
 ];
 
+export const supportTickets = [
+  {
+    id: 'ticket-0001',
+    user_id: USER_ID,
+    subject: 'Drip order timing question',
+    message: 'When will run 3 of my drip order go out?',
+    reply: null,
+    status: 'open',
+    priority: 'normal',
+    created_at: NOW,
+    user: { username: 'hassan_tester', email: 'hassan@payfollows.test' },
+  },
+];
+
+export const announcements = [
+  {
+    id: 'ann-0001',
+    subject: 'Scheduled maintenance window',
+    message: 'PayFollows will be briefly unavailable Sunday 02:00–02:30 UTC for provider upgrades.',
+    type: 'info',
+    status: 'published',
+    created_at: NOW,
+  },
+];
+
 export const payments = [
-  { id: 'pay-0001', user_id: USER_ID, amount: 12, status: 'completed', created_at: NOW },
-  { id: 'pay-0002', user_id: USER_ID, amount: 9, status: 'completed', created_at: NOW },
+  {
+    id: 'pay-0001',
+    user_id: USER_ID,
+    amount: 12,
+    fee: 0.24,
+    total: 12.24,
+    status: 'completed',
+    payment_method: 'fastpay',
+    payment_provider: 'fastpay',
+    transaction_id: 'fp-txn-7f3a91c20b',
+    fastpay_order_id: 'fp-order-5501',
+    created_at: NOW,
+    user: { username: 'hassan_tester', email: 'hassan@payfollows.test' },
+  },
+  {
+    id: 'pay-0002',
+    user_id: USER_ID,
+    amount: 9,
+    fee: 0.18,
+    total: 9.18,
+    status: 'completed',
+    payment_method: 'easypaisa',
+    payment_provider: 'easypaisa',
+    transaction_id: 'ep-txn-21d8e4f6aa',
+    fastpay_order_id: null,
+    created_at: NOW,
+    user: { username: 'hassan_tester', email: 'hassan@payfollows.test' },
+  },
+];
+
+export const balanceTransactions = [
+  {
+    id: 'bt-0001',
+    user_id: USER_ID,
+    type: 'deposit',
+    description: 'FastPay wallet deposit',
+    amount: 12,
+    balance_after: 125.5,
+    created_at: NOW,
+  },
+  {
+    id: 'bt-0002',
+    user_id: USER_ID,
+    type: 'order_payment',
+    description: 'Order ord-drip-0001',
+    amount: -12,
+    balance_after: 113.5,
+    created_at: NOW,
+  },
 ];
 
 export const platformSummary = [

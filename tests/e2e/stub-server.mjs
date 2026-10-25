@@ -250,6 +250,8 @@ export function createStubServer() {
         return sendRows(fx.orders);
       case 'payments':
         return sendRows(fx.payments);
+      case 'balance_transactions':
+        return sendRows(fx.balanceTransactions);
       case 'services':
         return sendRows(fx.services);
       case 'chat_channels':
@@ -269,7 +271,9 @@ export function createStubServer() {
       case 'audit_logs':
         return sendRows(fx.auditLogs);
       case 'announcements':
-        return sendRows([]);
+        return sendRows(fx.announcements);
+      case 'support_tickets':
+        return sendRows(fx.supportTickets);
       default:
         return sendRows([]);
     }

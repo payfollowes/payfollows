@@ -16,7 +16,8 @@
     "check-config": "node scripts/check_config.js",
     "test": "vitest",
     "e2e:smoke": "node tests/e2e/smoke.mjs",
-    "e2e:app": "node tests/e2e/app.mjs"
+    "e2e:app": "node tests/e2e/app.mjs",
+    "e2e:sweep": "node tests/e2e/sweep.mjs"
   },
   "dependencies": {
     "@fontsource/space-grotesk": "^5.2.10",
