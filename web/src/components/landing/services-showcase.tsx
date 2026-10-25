@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from './features';
-import { Reveal, staggerContainer, staggerItem } from '@/components/shared/reveal';
+import { Reveal, StaggerGroup, StaggerItem } from '@/components/shared/reveal';
 import { PlatformBrandIcon } from '@/components/shared/platform-icon';
 
 const SERVICES = [
@@ -60,20 +59,11 @@ export function ServicesShowcase() {
           />
         </Reveal>
 
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-          className="service-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {SERVICES.map((service) => (
-            <motion.div
-              key={service.platform}
-              variants={staggerItem}
-              whileHover={{ y: -6 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              className="group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-6 backdrop-blur-xl transition-colors duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
+        <StaggerGroup className="service-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {SERVICES.map((service, index) => (
+            <StaggerItem key={service.platform} index={index} className="h-full">
+            <div
+              className="group relative h-full overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
             >
               <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-primary-600/20 blur-3xl transition-opacity duration-500 group-hover:bg-primary-500/30" />
 
@@ -103,9 +93,10 @@ export function ServicesShowcase() {
                 Start growing
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            </motion.div>
+            </div>
+            </StaggerItem>
           ))}
-        </motion.div>
+        </StaggerGroup>
 
         <Reveal className="mt-12 text-center">
           <Button size="lg" asChild>

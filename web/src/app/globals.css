@@ -203,3 +203,31 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Progressive-enhancement scroll reveal (see shared/reveal.tsx)       */
+/* Hidden state exists only after hydration; SSR/no-JS stays visible.  */
+/* ------------------------------------------------------------------ */
+[data-reveal] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-reveal]:not([data-reveal-visible]) {
+  opacity: 0;
+  transform: translateY(var(--reveal-y, 28px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    transition: none;
+  }
+  [data-reveal]:not([data-reveal-visible]) {
+    opacity: 1;
+    transform: none;
+  }
+}

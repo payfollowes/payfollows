@@ -46,6 +46,42 @@ try {
   const navLinks = await page.locator('a').count();
   check('landing has navigation/links', navLinks >= 8, `${navLinks} links`);
 
+  // Scroll through the whole page so scroll-reveal sections settle (mirrors a
+  // real user and makes full-page screenshots complete). behavior:'instant'
+  // is required because the app sets scroll-behavior:smooth, which would
+  // otherwise animate each jump and never reach deep sections in time.
+  await page.evaluate(async () => {
+    for (let y = 0; y <= document.body.scrollHeight; y += 700) {
+      window.scrollTo({ top: y, behavior: 'instant' });
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+  await page.waitForTimeout(600);
+
+  // No section may be stuck invisible or empty — guards against reveal regressions.
+  const blankSections = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('section'))
+      // Radix toast/aria live regions are intentionally empty at rest.
+      .filter((s) => !s.getAttribute('aria-live'))
+      .filter((s) => {
+        const cs = getComputedStyle(s);
+        const r = s.getBoundingClientRect();
+        return Number(cs.opacity) < 0.5 || r.height < 40 || s.innerText.trim().length < 20;
+      })
+      .map((s) => s.id || s.querySelector('h2,h3')?.textContent?.trim().slice(0, 40) || 'unnamed')
+  );
+  check('landing all sections visible and populated', blankSections.length === 0, blankSections.join(', '));
+
+  // Every scroll-reveal element must actually have flipped visible after a
+  // full scroll pass (innerText alone would hide opacity-0 failures).
+  const stuckReveals = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-reveal]'))
+      .filter((el) => !el.hasAttribute('data-reveal-visible'))
+      .map((el) => el.textContent.trim().slice(0, 40))
+  );
+  check('landing no reveal elements stuck hidden', stuckReveals.length === 0, stuckReveals.join(' | '));
+
   const brokenImages = await page.evaluate(() =>
     Array.from(document.images).filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.src)
   );

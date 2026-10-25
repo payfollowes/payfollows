@@ -33,8 +33,12 @@ node:http stub (stub-server.mjs) — Supabase REST/RPC/auth + legacy /api
   settings, earnings and audit logs.
 - **`browser.mjs`** — bootstraps `@sparticuz/chromium` from `/tmp/chromium-pf`
   and attaches console/page-error/request diagnostics.
-- **`smoke.mjs`** — anonymous suite: landing, register/login/forgot-password,
-  route guards, 404, mobile overflow, broken images.
+- **`smoke.mjs`** — anonymous suite (21 checks): landing, a full scroll pass
+  asserting every section renders and no scroll-reveal element stays hidden,
+  register/login/forgot-password, route guards, 404, mobile overflow, broken
+  images. Scroll steps use `behavior:'instant'` because the app ships
+  `scroll-behavior:smooth`, which would otherwise animate test jumps and
+  never reach deep sections within the waits.
 - **`app.mjs`** — authenticated suite (user + admin): identity, notification
   bell, referrals, child panels, live chat, drip-feed ordering, orders table,
   plus admin financials, audit, settings and channel management. Mutation
@@ -49,7 +53,7 @@ Screenshots and JSON results land in `artifacts/` (gitignored).
 cd web && npx next build && npx next start -p 3000 -H 0.0.0.0 &
 
 # 2. From the repo root
-node tests/e2e/smoke.mjs           # 19 anonymous checks
+node tests/e2e/smoke.mjs           # 21 anonymous checks
 node tests/e2e/app.mjs             # 30 authenticated checks
 node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
 ```
@@ -69,3 +73,7 @@ node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
 - Harness noise (aborted analytics, navigation-driven `ERR_ABORTED`, the
   intentional 404-document check) is filtered explicitly in the diagnostics
   gates.
+- Scroll reveals are progressive-enhancement only: the hidden state is applied
+  post-hydration via `[data-reveal]` (see `web/src/components/shared/reveal.tsx`
+  and globals.css), so SSR/no-JS markup is always visible and framer-motion
+  `whileInView` opacity traps can never blank a section.

@@ -1,8 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Zap, ShieldCheck, Clock, Headphones, Wallet, RefreshCw } from 'lucide-react';
-import { Reveal, staggerContainer, staggerItem } from '@/components/shared/reveal';
+import { Reveal, StaggerGroup, StaggerItem } from '@/components/shared/reveal';
 
 const FEATURES = [
   {
@@ -49,20 +48,11 @@ export function Features() {
           />
         </Reveal>
 
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-          className="feature-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {FEATURES.map((feature) => (
-            <motion.div
-              key={feature.title}
-              variants={staggerItem}
-              whileHover={{ y: -6 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              className="group relative overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-colors duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
+        <StaggerGroup className="feature-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature, index) => (
+            <StaggerItem key={feature.title} index={index} className="h-full">
+            <div
+              className="group relative h-full overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
             >
               <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-primary-600/25 blur-3xl transition-all duration-500 group-hover:bg-primary-500/35" />
               <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary-400/50 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
@@ -72,9 +62,10 @@ export function Features() {
               </span>
               <h3 className="relative mt-5 font-display text-lg font-bold text-white">{feature.title}</h3>
               <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
-            </motion.div>
+            </div>
+            </StaggerItem>
           ))}
-        </motion.div>
+        </StaggerGroup>
       </div>
     </section>
   );

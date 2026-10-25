@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { Reveal, StaggerGroup, StaggerItem } from '@/components/shared/reveal';
 import { Check, Sparkles, ArrowRight } from 'lucide-react';
 import { SectionHeading } from './features';
-import { Reveal, staggerContainer, staggerItem } from '@/components/shared/reveal';
 import { cn } from '@/lib/utils';
 
 interface Plan {
@@ -75,20 +74,12 @@ export function Pricing() {
           />
         </Reveal>
 
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-          className="mt-12 grid items-stretch gap-6 lg:grid-cols-3"
-        >
-          {PLANS.map((plan) => (
-            <motion.div
-              key={plan.name}
-              variants={staggerItem}
-              whileHover={{ y: -8 }}
+        <StaggerGroup className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+          {PLANS.map((plan, index) => (
+            <StaggerItem key={plan.name} index={index} className="h-full">
+            <div
               className={cn(
-                'relative flex flex-col rounded-3xl border p-8 backdrop-blur-xl transition-shadow duration-300',
+                'relative flex h-full flex-col rounded-3xl border p-8 backdrop-blur-xl transition-all duration-300 hover:-translate-y-2',
                 plan.popular
                   ? 'glow-panel border-primary-500/40 bg-ink-800/95 shadow-glow lg:-mt-4 lg:mb-[-16px]'
                   : 'border-[rgba(167,139,250,0.12)] bg-ink-850/85 hover:border-primary-500/30 hover:shadow-card-hover'
@@ -148,9 +139,10 @@ export function Pricing() {
                 {plan.cta}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            </motion.div>
+            </div>
+            </StaggerItem>
           ))}
-        </motion.div>
+        </StaggerGroup>
       </div>
     </section>
   );

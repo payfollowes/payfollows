@@ -1,9 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { UserPlus, Wallet, ShoppingCart, TrendingUp } from 'lucide-react';
 import { SectionHeading } from './features';
-import { Reveal, StaggerGroup, staggerItem } from '@/components/shared/reveal';
+import { Reveal, StaggerGroup, StaggerItem } from '@/components/shared/reveal';
 
 const STEPS = [
   { icon: UserPlus, title: 'Create Account', desc: 'Sign up free in under a minute with just your email and username.' },
@@ -26,11 +25,9 @@ export function HowItWorks() {
 
         <StaggerGroup className="steps-grid relative mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => (
-            <motion.div
-              key={step.title}
-              variants={staggerItem}
-              whileHover={{ y: -6 }}
-              className="group relative rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 text-center backdrop-blur-xl transition-colors duration-300 hover:border-primary-500/40 hover:shadow-card-hover"
+            <StaggerItem key={step.title} index={i} className="h-full">
+            <div
+              className="group relative h-full rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 text-center backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
             >
               <div className="pointer-events-none absolute -top-14 left-1/2 h-28 w-28 -translate-x-1/2 rounded-full bg-primary-600/20 blur-3xl transition-all duration-500 group-hover:bg-primary-500/30" />
               <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
@@ -43,7 +40,8 @@ export function HowItWorks() {
               </div>
               <h3 className="relative mt-5 font-display text-lg font-bold text-white">{step.title}</h3>
               <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{step.desc}</p>
-            </motion.div>
+            </div>
+            </StaggerItem>
           ))}
         </StaggerGroup>
       </div>
