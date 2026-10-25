@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { adminAPI } from '@/lib/api';
+import { adminAPI, isAuthError } from '@/lib/api';
 import type { MarginRule, MarginRuleInput, MarginType, Provider } from '@/lib/types';
 
 type FormState = {
@@ -80,8 +80,9 @@ export default function AdminMarginsPage() {
       ]);
       setProviders(providerRows);
       setRules(providerFilter === 'all' ? ruleRows : ruleRows.filter((r) => r.provider_id === providerFilter));
-    } catch {
-      toast.error('Failed to load margin rules');
+    } catch (err) {
+      // 401/403 means the shell is already redirecting to login / dashboard.
+      if (!isAuthError(err)) toast.error('Failed to load margin rules');
     } finally {
       setLoading(false);
     }

@@ -49,6 +49,26 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 const AUTH_LOOKUP_TIMEOUT_MS = 8000;
 const SUPABASE_QUERY_TIMEOUT_MS = 12000;
 
+/** Error carrying the legacy bridge's HTTP status so callers can spot 401/403. */
+export class BridgeError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'BridgeError';
+    this.status = status;
+  }
+}
+
+export function bridgeError(res: Response, payload: any, fallback: string): BridgeError {
+  return new BridgeError(res.status, payload?.message || payload?.error?.message || fallback);
+}
+
+/** Auth failures are handled by the shell's redirect, so pages can skip their own toast. */
+export function isAuthError(err: unknown): boolean {
+  return err instanceof BridgeError && (err.status === 401 || err.status === 403);
+}
+
 async function getAuthenticatedUser() {
   const user = await getSessionUser(AUTH_LOOKUP_TIMEOUT_MS);
   if (!user) throw new Error('User not authenticated');
@@ -732,7 +752,7 @@ export const adminAPI = {
     const res = await apiFetch(`/api/admin/margin-rules?${query.toString()}`);
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || payload?.success === false) {
-      throw new Error(payload?.message || payload?.error?.message || 'Failed to load margin rules');
+      throw bridgeError(res, payload, 'Failed to load margin rules');
     }
     return Array.isArray(payload?.rules) ? payload.rules : [];
   },
@@ -744,7 +764,7 @@ export const adminAPI = {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || payload?.success === false) {
-      throw new Error(payload?.message || payload?.error?.message || 'Failed to create margin rule');
+      throw bridgeError(res, payload, 'Failed to create margin rule');
     }
     return payload.rule;
   },
@@ -756,7 +776,7 @@ export const adminAPI = {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || payload?.success === false) {
-      throw new Error(payload?.message || payload?.error?.message || 'Failed to update margin rule');
+      throw bridgeError(res, payload, 'Failed to update margin rule');
     }
     return payload.rule;
   },
@@ -767,7 +787,7 @@ export const adminAPI = {
     });
     if (!res.ok && res.status !== 204) {
       const payload = await res.json().catch(() => ({}));
-      throw new Error(payload?.message || payload?.error?.message || 'Failed to delete margin rule');
+      throw bridgeError(res, payload, 'Failed to delete margin rule');
     }
   },
 
