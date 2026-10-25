@@ -3,6 +3,7 @@
 import { getSessionUser, supabase, withSupabaseTimeout } from './supabase/client';
 import type {
   Announcement,
+  BalanceTransaction,
   Order,
   OrderStatus,
   Payment,
@@ -122,9 +123,15 @@ export const authAPI = {
     if (error) throw error;
     if (data.user) {
       const { error: profileError } = await runQuery(
+        // The handle_new_user trigger already creates the profile; treat this
+        // as a best-effort fallback that never overwrites an existing row
+        // (clients have no direct UPDATE policy on user_profiles).
         supabase
           .from('user_profiles')
-          .upsert({ id: data.user.id, email, username, role: 'user' }, { onConflict: 'id' }),
+          .upsert({ id: data.user.id, email, username, role: 'user' }, {
+            onConflict: 'id',
+            ignoreDuplicates: true,
+          }),
         'profile upsert'
       );
       if (profileError) console.warn('[auth] profile upsert warning', profileError);
@@ -256,64 +263,25 @@ export const ordersAPI = {
     quantity: number,
     deliveryTime = 24,
     providerId?: string,
-    providerOrderId?: string,
-    initialStatus: OrderStatus = 'pending',
-    chargeOverride?: number
+    providerOrderId?: string
   ): Promise<Order> {
-    const user = await getAuthenticatedUser();
-    let charge = Number.isFinite(chargeOverride) ? Number(chargeOverride) : NaN;
-
-    if (!Number.isFinite(charge)) {
-      const service = await servicesAPI.getService(serviceId);
-      let rate = service.rate_per_1000;
-      try {
-        const match = (await getProviderServicesSnapshot()).find(
-          (row: any) =>
-            row?.status !== 'inactive' && String(row?.service_id || '').trim() === String(serviceId).trim()
-        );
-        if (match?.our_rate !== undefined && match?.our_rate !== null) rate = Number(match.our_rate);
-      } catch {
-        /* use catalog rate */
-      }
-      charge = (rate / 1000) * quantity;
-    }
-
-    if (!Number.isFinite(charge) || charge <= 0) {
-      throw new Error('This service has not been priced yet. Please contact support.');
-    }
-
-    const profile = await authAPI.getUserProfile();
-    if (!profile || profile.balance < charge) throw new Error('Insufficient balance');
-
+    // Atomic, server-side operation: the place_order RPC validates the
+    // service, resolves the margin-managed rate, checks the balance under a
+    // row lock, inserts the order, debits the wallet and writes a ledger entry
+    // in one transaction. Direct client balance writes are blocked by RLS.
+    await getAuthenticatedUser();
     const { data, error } = await runQuery(
-      supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          service_id: serviceId,
-          provider_id: providerId || null,
-          provider_order_id: providerOrderId || null,
-          link,
-          quantity,
-          charge,
-          delivery_time: deliveryTime,
-          status: initialStatus,
-        })
-        .select()
-        .single(),
-      'create order'
+      supabase.rpc('place_order', {
+        p_service_id: serviceId,
+        p_link: link,
+        p_quantity: quantity,
+        p_delivery_time: deliveryTime,
+        p_provider_id: providerId ?? null,
+        p_provider_order_id: providerOrderId ?? null,
+      }),
+      'place order'
     );
     if (error) throw error;
-
-    const { error: balanceError } = await runQuery(
-      supabase
-        .from('user_profiles')
-        .update({ balance: profile.balance - charge, total_spent: profile.total_spent + charge })
-        .eq('id', user.id),
-      'balance update'
-    );
-    if (balanceError) throw balanceError;
-
     return data as Order;
   },
 
@@ -506,9 +474,15 @@ export const adminAPI = {
     return (data as UserProfile[]) ?? [];
   },
 
-  async updateUserBalance(userId: string, balance: number) {
+  async updateUserBalance(userId: string, balance: number, reason?: string) {
+    // Routed through an admin-only RPC so the delta lands in the ledger and
+    // direct balance writes (blocked by the profile guard trigger) never happen.
     const { data, error } = await runQuery(
-      supabase.from('user_profiles').update({ balance }).eq('id', userId).select().single(),
+      supabase.rpc('admin_set_balance', {
+        p_user_id: userId,
+        p_new_balance: balance,
+        p_reason: reason ?? 'Manual admin adjustment',
+      }),
       'update balance'
     );
     if (error) throw error;
@@ -605,6 +579,20 @@ export const adminAPI = {
     const { data, error } = await runQuery(
       supabase.from('orders').update({ status }).eq('id', orderId).select().single(),
       'update order status'
+    );
+    if (error) throw error;
+    return data as Order;
+  },
+
+  async refundOrder(orderId: string, reason?: string) {
+    // Admin-only RPC: validates the order state, credits the wallet atomically,
+    // reverses total_spent and appends a ledger row. Idempotent per order.
+    const { data, error } = await runQuery(
+      supabase.rpc('refund_order', {
+        p_order_id: orderId,
+        p_reason: reason ?? 'Order refund',
+      }),
+      'refund order'
     );
     if (error) throw error;
     return data as Order;
@@ -724,5 +712,24 @@ export const adminAPI = {
       'delete announcement'
     );
     if (error) throw error;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Wallet ledger                                                       */
+/* ------------------------------------------------------------------ */
+
+export const walletAPI = {
+  async listTransactions(limit = 50) {
+    const { data, error } = await runQuery(
+      supabase
+        .from('balance_transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      'list ledger'
+    );
+    if (error) throw error;
+    return (data as BalanceTransaction[]) ?? [];
   },
 };

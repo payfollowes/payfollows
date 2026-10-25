@@ -70,6 +70,25 @@ export interface Payment {
   user?: { username: string; email: string };
 }
 
+export type LedgerEntryType =
+  | 'deposit'
+  | 'order_debit'
+  | 'refund'
+  | 'admin_adjustment'
+  | 'referral_bonus';
+
+export interface BalanceTransaction {
+  id: string;
+  user_id: string;
+  type: LedgerEntryType;
+  amount: number; // signed: positive credit, negative debit
+  balance_after: number;
+  reference_type: 'payment' | 'order' | 'manual' | null;
+  reference_id: string | null;
+  description: string | null;
+  created_at: string;
+}
+
 export interface Provider {
   id: string;
   name: string;

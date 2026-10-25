@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +31,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [refundingId, setRefundingId] = useState<string | null>(null);
 
   const load = () =>
     adminAPI
@@ -65,6 +66,19 @@ export default function AdminOrdersPage() {
       toast.success(`Order marked ${next}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Update failed');
+    }
+  };
+
+  const refund = async (order: Order) => {
+    setRefundingId(order.id);
+    try {
+      await adminAPI.refundOrder(order.id);
+      toast.success(`Refunded ${formatAmount(order.charge)} to the user's wallet`);
+      void load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Refund failed');
+    } finally {
+      setRefundingId(null);
     }
   };
 
@@ -131,16 +145,29 @@ export default function AdminOrdersPage() {
                       </TableCell>
                       <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">{formatDateTime(order.created_at)}</TableCell>
                       <TableCell className="text-right">
-                        <Select value={order.status} onValueChange={(v) => changeStatus(order, v as OrderStatus)}>
-                          <SelectTrigger className="h-9 w-36 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUSES.map((s) => (
-                              <SelectItem key={s} value={s} className="capitalize text-xs">{s}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center justify-end gap-2">
+                          <Select value={order.status} onValueChange={(v) => changeStatus(order, v as OrderStatus)}>
+                            <SelectTrigger className="h-9 w-32 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUSES.map((s) => (
+                                <SelectItem key={s} value={s} className="capitalize text-xs">{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {(order.status === 'canceled' || order.status === 'failed') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 border-emerald-500/30 text-xs text-emerald-400 hover:text-emerald-300"
+                              loading={refundingId === order.id}
+                              onClick={() => refund(order)}
+                            >
+                              <Undo2 className="mr-1 h-3.5 w-3.5" /> Refund
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

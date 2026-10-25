@@ -142,7 +142,9 @@ router.post(
     const { data: updatedPayment, error: paymentError } = await supabaseAdmin
       .from('payments')
       .update({
-        status,
+        // On completion the status is flipped atomically by credit_deposit()
+        // together with the wallet credit and ledger entry.
+        ...(status === 'completed' ? {} : { status }),
         transaction_id: providerTxnId || paymentRecord.transaction_id,
         fastpay_order_id: fastpayOrderId || paymentRecord.fastpay_order_id,
         metadata: mergedMetadata,
@@ -157,24 +159,16 @@ router.post(
     }
 
     if (status === 'completed' && paymentRecord.status !== 'completed') {
-      const { data: userProfile, error: userError } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id, balance')
-        .eq('id', paymentRecord.user_id)
-        .single();
+      // Atomic, idempotent credit: marks the payment completed, adds the funds
+      // and writes the ledger row in one database function. A 500 here lets the
+      // provider retry; the event-receipt unique constraint makes retries safe.
+      const { error: creditError } = await supabaseAdmin.rpc('credit_deposit', {
+        p_payment_id: paymentRecord.id,
+      });
 
-      if (userError) {
-        console.error('Error fetching user for balance credit', userError);
-      } else if (userProfile) {
-        const creditAmount = Number(updatedPayment.amount || paymentRecord.amount || amount || 0);
-        const { error: updateError } = await supabaseAdmin
-          .from('user_profiles')
-          .update({ balance: Number(userProfile.balance || 0) + creditAmount })
-          .eq('id', paymentRecord.user_id);
-
-        if (updateError) {
-          console.error('Failed to update user balance', updateError);
-        }
+      if (creditError) {
+        console.error('Failed to credit deposit via credit_deposit RPC', creditError);
+        return res.status(500).json(errorResponse('CREDIT_FAILED', 'Wallet credit failed'));
       }
     }
 

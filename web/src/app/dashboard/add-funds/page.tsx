@@ -13,10 +13,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { paymentsAPI } from '@/lib/api';
+import { paymentsAPI, walletAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCurrency } from '@/lib/currency';
-import type { Payment } from '@/lib/types';
+import type { BalanceTransaction, Payment } from '@/lib/types';
 import { cn, formatDateTime } from '@/lib/utils';
 
 const METHODS = [
@@ -38,6 +38,7 @@ function AddFundsInner() {
   const [loading, setLoading] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
+  const [ledger, setLedger] = useState<BalanceTransaction[]>([]);
 
   useEffect(() => {
     if (params.get('success') === 'true') {
@@ -52,6 +53,10 @@ function AddFundsInner() {
       .then(setPayments)
       .catch(() => setPayments([]))
       .finally(() => setTableLoading(false));
+    walletAPI
+      .listTransactions(25)
+      .then(setLedger)
+      .catch(() => setLedger([]));
   }, [params, refreshProfile]);
 
   const amountNum = Number(amount) || 0;
@@ -210,6 +215,46 @@ function AddFundsInner() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Balance History</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {ledger.length === 0 ? (
+                <p className="p-6 text-center text-sm text-muted-foreground">
+                  No wallet movements yet. Deposits, orders and refunds will appear here.
+                </p>
+              ) : (
+                <ul className="divide-y divide-white/5">
+                  {ledger.map((tx) => {
+                    const credit = tx.amount >= 0;
+                    return (
+                      <li key={tx.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-white">
+                            {tx.description ?? tx.type.replace('_', ' ')}
+                          </p>
+                          <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                            {tx.type.replace('_', ' ')} · {formatDateTime(tx.created_at)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn('text-sm font-semibold', credit ? 'text-emerald-400' : 'text-red-400')}>
+                            {credit ? '+' : '−'}
+                            {formatAmount(Math.abs(tx.amount))}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Bal {formatAmount(tx.balance_after)}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </CardContent>
           </Card>
