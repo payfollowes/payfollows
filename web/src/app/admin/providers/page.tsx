@@ -21,6 +21,7 @@ import { adminAPI } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import type { Provider } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { ImportCatalogDialog } from './import-catalog-dialog';
 
 const EMPTY = { name: '', api_url: '', api_key: '', balance: '0', markup_percentage: '20', status: 'active' as Provider['status'] };
 
@@ -32,11 +33,28 @@ export default function AdminProvidersPage() {
   const [editing, setEditing] = useState<Provider | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [serviceCounts, setServiceCounts] = useState<Record<string, number>>({});
+
+  const loadCounts = async (rows: Provider[]) => {
+    const entries = await Promise.all(
+      rows.map(async (p) => {
+        try {
+          return [p.id, await adminAPI.countProviderServices(p.id)] as const;
+        } catch {
+          return [p.id, 0] as const;
+        }
+      })
+    );
+    setServiceCounts(Object.fromEntries(entries));
+  };
 
   const load = () =>
     adminAPI
       .getAllProviders()
-      .then(setProviders)
+      .then((rows) => {
+        setProviders(rows);
+        void loadCounts(rows);
+      })
       .catch(() => toast.error('Failed to load providers'))
       .finally(() => setLoading(false));
 
@@ -180,8 +198,15 @@ export default function AdminProvidersPage() {
                 </div>
               </div>
               <p className="mt-3 text-[11px] text-muted-foreground">Last sync: {formatDate(p.last_sync)}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Linked services:{' '}
+                <span className="font-semibold text-primary-300">
+                  {(serviceCounts[p.id] ?? 0).toLocaleString()}
+                </span>
+              </p>
               <div className="mt-4 flex gap-2">
-                <Button variant="secondary" size="sm" className="flex-1" onClick={() => openEdit(p)}>
+                <ImportCatalogDialog provider={p} onSynced={() => void load()} />
+                <Button variant="secondary" size="sm" onClick={() => openEdit(p)}>
                   <Pencil /> Edit
                 </Button>
                 <Button variant="destructive" size="icon" onClick={() => remove(p)} aria-label="Delete">

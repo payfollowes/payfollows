@@ -3,8 +3,16 @@ import { supabaseAdmin, supabaseAdminConfigured } from '../lib/supabaseServer.js
 import { validateRequest, validateQuery, schemas } from '../lib/validation.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import CacheStore, { globalCache, adminCache } from '../lib/cache.js';
+import { requireAuth } from '../lib/authz.js';
 
 const router = express.Router();
+
+// Internal pricing/mapping snapshots are business data and require a login.
+// The POST '/' reseller endpoint keeps its own API-key authentication instead.
+router.use((req, res, next) => {
+  if (req.method === 'POST' && (req.path === '/' || req.path === '')) return next();
+  return requireAuth(req, res, next);
+});
 const SUPABASE_QUERY_TIMEOUT_MS = 12000;
 const PROVIDER_SERVICES_CACHE_TTL_MS = 60000;
 const PAGED_QUERY_SIZE = 1000;

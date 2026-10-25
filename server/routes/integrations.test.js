@@ -23,6 +23,13 @@ vi.mock('../lib/supabaseServer.js', () => ({
   supabaseConfigured: true,
 }));
 
+// These tests exercise the cache mechanics with an already-trusted caller;
+// authentication is covered separately by the authz middleware tests.
+vi.mock('../lib/authz.js', () => ({
+  requireAuth: (req, res, next) => next(),
+  requireAdmin: (req, res, next) => next(),
+}));
+
 // Factories for each provider-services DB query, consumed in order.
 let queryQueue = [];
 

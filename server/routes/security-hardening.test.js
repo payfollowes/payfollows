@@ -142,6 +142,14 @@ describe('security hardening', () => {
       return {};
     });
 
+    // Wallet crediting now runs through the idempotent credit_deposit() RPC
+    // instead of a direct user_profiles balance update.
+    const creditDeposit = vi.fn(async () => ({
+      data: { id: 'pay-1', status: 'completed', amount: 125 },
+      error: null,
+    }));
+    mockSupabaseAdmin.rpc = creditDeposit;
+
     mockConfig.supabaseAdminConfigured = true;
 
     const req = {
@@ -159,5 +167,8 @@ describe('security hardening', () => {
     expect(result.statusCode).toBe(200);
     expect(result.payload).toMatchObject({ success: true });
     expect(mockSupabaseAdmin.from).toHaveBeenCalledWith('payment_event_receipts');
+    // Exactly one atomic credit call; the RPC itself rejects duplicate credits.
+    expect(creditDeposit).toHaveBeenCalledTimes(1);
+    expect(creditDeposit).toHaveBeenCalledWith('credit_deposit', { p_payment_id: 'pay-1' });
   });
 });

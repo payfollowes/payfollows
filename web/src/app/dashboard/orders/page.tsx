@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, RefreshCw, ExternalLink, Search } from 'lucide-react';
+import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ export default function OrdersPage() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -67,6 +68,33 @@ export default function OrdersPage() {
     await load();
     setSyncing(false);
     toast.success('Order statuses synced');
+  };
+
+  const refill = async (order: Order) => {
+    setActionId(order.id);
+    try {
+      await ordersAPI.refillOrder(order);
+      toast.success('Refill requested — the provider will top up any drops');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Refill failed');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const cancel = async (order: Order) => {
+    if (!window.confirm('Cancel this order at the provider? Refund, if eligible, is handled by support.')) return;
+    setActionId(order.id);
+    try {
+      await ordersAPI.cancelOrder(order);
+      toast.success('Cancellation requested');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Cancel failed');
+    } finally {
+      setActionId(null);
+    }
   };
 
   return (
@@ -130,6 +158,7 @@ export default function OrdersPage() {
                   <TableHead>Charge</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -162,6 +191,36 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                         {formatDateTime(order.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        {order.provider_id && order.provider_order_id ? (
+                          <div className="flex justify-end gap-1.5">
+                            {(order.status === 'pending' || order.status === 'processing') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 border-red-500/30 text-xs text-red-300 hover:text-red-200"
+                                loading={actionId === order.id}
+                                onClick={() => cancel(order)}
+                              >
+                                <XCircle className="mr-1 h-3.5 w-3.5" /> Cancel
+                              </Button>
+                            )}
+                            {order.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 border-primary-500/30 text-xs text-primary-300 hover:text-primary-200"
+                                loading={actionId === order.id}
+                                onClick={() => refill(order)}
+                              >
+                                <Undo2 className="mr-1 h-3.5 w-3.5" /> Refill
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-right text-[11px] text-muted-foreground">—</p>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

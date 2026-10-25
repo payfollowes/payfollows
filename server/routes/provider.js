@@ -3,9 +3,15 @@ import { supabaseAdmin } from '../lib/supabaseServer.js';
 import { readAuthCookies } from '../lib/authCookies.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import { validateQuery, validateRequest, validateParams, schemas } from '../lib/validation.js';
+import { requireAuth, requireAdmin } from '../lib/authz.js';
 import { z } from 'zod';
 
 const router = express.Router();
+
+// Every provider bridge route operates on the platform's upstream SMM account,
+// so none of them may be anonymous. Balance/catalog reads are admin-only;
+// order actions require any authenticated user (ownership is checked per row).
+router.use(requireAuth);
 
 const DEFAULT_PROVIDER_API_URL = 'https://daosmm.com/api/v2';
 
@@ -179,7 +185,7 @@ async function callDaoSMM(provider, params) {
  * Fetch available services from provider
  * Used by admin to sync services
  */
-router.get('/services', async (req, res) => {
+router.get('/services', requireAdmin, async (req, res) => {
   try {
     const { provider_id } = req.query;
 
@@ -596,7 +602,7 @@ router.post('/sync-local-orders', async (req, res) => {
  * Get account balance from provider
  * Query: provider_id
  */
-router.get('/balance', async (req, res) => {
+router.get('/balance', requireAdmin, async (req, res) => {
   try {
     const { provider_id } = req.query;
 

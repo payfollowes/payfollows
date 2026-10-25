@@ -27,10 +27,20 @@ export function apiUrl(path: string): string {
 }
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  // Attach the Supabase access token as a Bearer header so legacy bridge calls
+  // authenticate reliably across domains (cookies alone are SameSite-fragile
+  // between *.vercel.app sites). Explicit headers always win.
+  const headers = new Headers(init?.headers);
+  headers.set('Content-Type', 'application/json');
+  if (!headers.has('Authorization')) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+  }
   return fetch(apiUrl(path), {
     ...init,
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    headers,
   });
 }
 
@@ -322,6 +332,35 @@ export const ordersAPI = {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || 'Provider order failed');
+    return payload;
+  },
+
+  // Ask the upstream provider to refill a delivered order (guarantee claim).
+  async refillOrder(order: Order) {
+    if (!order.provider_id || !order.provider_order_id) {
+      throw new Error('This order is not linked to a provider yet');
+    }
+    const res = await apiFetch('/api/provider/refill', {
+      method: 'POST',
+      body: JSON.stringify({ provider_id: order.provider_id, orders: order.provider_order_id }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.details || payload?.error || 'Refill request failed');
+    return payload;
+  },
+
+  // Cancel an in-progress order at the provider. Wallet refund (when allowed)
+  // is handled separately by an admin through refund_order().
+  async cancelOrder(order: Order) {
+    if (!order.provider_id || !order.provider_order_id) {
+      throw new Error('This order is not linked to a provider yet');
+    }
+    const res = await apiFetch('/api/provider/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ provider_id: order.provider_id, orders: order.provider_order_id }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.details || payload?.error || 'Cancel request failed');
     return payload;
   },
 };
@@ -643,6 +682,43 @@ export const adminAPI = {
       'delete provider'
     );
     if (error) throw error;
+  },
+
+  async countProviderServices(providerId: string): Promise<number> {
+    const { count, error } = await runQuery(
+      supabase
+        .from('provider_services')
+        .select('id', { count: 'exact', head: true })
+        .eq('provider_id', providerId),
+      'count provider services'
+    );
+    if (error) throw error;
+    return count ?? 0;
+  },
+
+  // Pulls the provider's full SMM catalog through the legacy admin bridge,
+  // upserts services + provider_services with the given markup and returns
+  // the import summary. Runs server-side so the provider API key stays secret.
+  async syncProviderServices(input: {
+    providerId: string;
+    markupPercent: number;
+    category?: string;
+    replaceExisting?: boolean;
+  }): Promise<{ success: boolean; count: number; skipped_services: unknown[]; message: string }> {
+    const res = await apiFetch('/api/admin/sync-provider-services', {
+      method: 'POST',
+      body: JSON.stringify({
+        provider_id: input.providerId,
+        markup_percent: input.markupPercent,
+        category: input.category || undefined,
+        replace_existing: input.replaceExisting ?? true,
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || payload?.success === false) {
+      throw new Error(payload?.message || payload?.error?.message || 'Catalog sync failed');
+    }
+    return payload;
   },
 
   async getAllTickets(): Promise<SupportTicket[]> {
