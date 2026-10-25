@@ -114,7 +114,10 @@ export default function AdminFinancialPage() {
                 return (
                   <div
                     key={row.date}
-                    className="group relative flex flex-1 flex-col justify-end"
+                    // h-full is required: the parent's items-end prevents
+                    // flex stretch, so without a definite height the bar's
+                    // percentage height resolves against auto → 0px.
+                    className="group relative flex h-full flex-1 flex-col justify-end"
                     title={`${row.date}: ${formatAmount(value)} charges, ${formatAmount(profit)} net`}
                   >
                     <div

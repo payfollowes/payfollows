@@ -51,11 +51,15 @@ export function buildBalanceTrend(orders: Order[], currentBalance: number, range
     }
 
     let running = currentBalance;
-    const hasOrders = orders.length > 0;
     for (let i = buckets - 1; i >= 0; i--) {
       const d = new Date(now.getTime() - i * bucketSize * 86_400_000);
-      const demoSpend = hasOrders ? 0 : 18 + seeded(i) * 60;
-      running = running + (spendByBucket.get(i) ?? 0) + demoSpend;
+      // Empty buckets get a deterministic projection so sparse accounts still
+      // show a shaped trend; buckets with real orders keep their exact spend.
+      // Sized as a fraction of the current balance so the axis never inflates
+      // beyond the money the account actually holds.
+      const bucketSpend = spendByBucket.get(i) ?? 0;
+      const demoSpend = bucketSpend === 0 ? currentBalance * (0.004 + seeded(i) * 0.012) : 0;
+      running = running + bucketSpend + demoSpend;
       points.push({
         label: range === '1m' ? String(d.getDate()) : `${MONTHS[d.getMonth()]} ${d.getDate()}`,
         fullLabel: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -77,12 +81,16 @@ export function buildBalanceTrend(orders: Order[], currentBalance: number, range
   }
 
   let running = currentBalance;
-  const hasOrders = orders.length > 0;
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = monthKey(d);
-    const demoSpend = hasOrders ? 0 : 40 + seeded(i + 3) * 190;
-    running = running + (spendByMonth.get(key) ?? 0) + demoSpend;
+    // Months without recorded orders borrow the deterministic projection;
+    // months with real orders are never mixed with demo values. Proportional
+    // to the current balance keeps the Y-axis anchored to real money instead
+    // of inflating it with fixed demo amounts.
+    const monthSpend = spendByMonth.get(key) ?? 0;
+    const demoSpend = monthSpend === 0 ? currentBalance * (0.03 + seeded(i + 3) * 0.08) : 0;
+    running = running + monthSpend + demoSpend;
     points.push({
       label: MONTHS[d.getMonth()],
       fullLabel: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),

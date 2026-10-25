@@ -370,14 +370,14 @@ function NewOrderInner() {
                               {perRun > 0 && (
                                 <>
                                   {' '}
-                                  (~<span className="font-bold text-white">{perRun.toLocaleString()}</span> per run),
+                                  (about <span className="font-bold text-white">{perRun.toLocaleString()}</span> per run),
                                   delivered every{' '}
                                   <span className="font-bold text-white">
                                     {intervalMinutes >= 1440
-                                      ? `${intervalMinutes / 1440} day(s)`
+                                      ? `${intervalMinutes / 1440} ${intervalMinutes / 1440 === 1 ? 'day' : 'days'}`
                                       : intervalMinutes >= 60
-                                        ? `${intervalMinutes / 60} hour(s)`
-                                        : `${intervalMinutes} min`}
+                                        ? `${intervalMinutes / 60} ${intervalMinutes / 60 === 1 ? 'hour' : 'hours'}`
+                                        : `${intervalMinutes} ${intervalMinutes === 1 ? 'minute' : 'minutes'}`}
                                   </span>
                                 </>
                               )}
