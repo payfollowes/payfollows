@@ -246,6 +246,7 @@ async function suite(role) {
       await wait(1000);
       const adminOrders = await page.locator('body').innerText();
       assert('admin orders show drip interval', /every 60m/.test(adminOrders));
+      assert('admin orders resolve embedded user', adminOrders.includes('hassan_tester'));
       await shot('25-admin-orders.png');
     }
 

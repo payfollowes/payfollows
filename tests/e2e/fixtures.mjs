@@ -102,6 +102,7 @@ export const orders = [
     runs_delivered: 2,
     created_at: NOW,
     service: { id: 'svc-001', name: 'Instagram Real Followers — High Quality' },
+    user: { username: 'hassan_tester', email: 'hassan@payfollows.test' },
   },
   {
     id: 'ord-plain-0002',
@@ -118,6 +119,7 @@ export const orders = [
     runs_delivered: 0,
     created_at: NOW,
     service: { id: 'svc-002', name: 'TikTok Video Views — Instant Start' },
+    user: { username: 'hassan_tester', email: 'hassan@payfollows.test' },
   },
 ];
 

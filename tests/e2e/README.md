@@ -61,7 +61,7 @@ cd web && npx next build && npx next start -p 3000 -H 0.0.0.0 &
 
 # 2. From the repo root
 node tests/e2e/smoke.mjs           # 21 anonymous checks
-node tests/e2e/app.mjs             # 34 authenticated deep-flow checks
+node tests/e2e/app.mjs             # 35 authenticated deep-flow checks
 node tests/e2e/sweep.mjs           # 69 authenticated route-render checks
                                    # (every dashboard/admin route, NaN guards)
 node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
