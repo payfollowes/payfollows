@@ -39,17 +39,20 @@ node:http stub (stub-server.mjs) — Supabase REST/RPC/auth + legacy /api
   images. Scroll steps use `behavior:'instant'` because the app ships
   `scroll-behavior:smooth`, which would otherwise animate test jumps and
   never reach deep sections within the waits.
-- **`app.mjs`** — authenticated suite (35 checks, user + admin): identity,
+- **`app.mjs`** — authenticated suite (40 checks, user + admin): identity,
   notification bell, referrals, child panels, live chat, drip-feed ordering,
   orders table, balance-trend curve shape, plus admin overview head-counts,
   financials (including rendered bar heights), audit, settings and channel
   management. Mutation assertions poll `waitForMutation` instead of using
   fixed sleeps.
-- **`sweep.mjs`** — authenticated route sweep (69 checks): visits all 10
+- **`sweep.mjs`** — authenticated route sweep (72 checks): visits all 11
   user and 13 admin routes and asserts each renders content, has no console
   errors/uncaught exceptions/failed requests, and leaks no `NaN`/`undefined`
   text. Catches whole-page crashes and formatter defects the deep-flow suite
-  never navigates to.
+  never navigates to. The browser itself is the npm-hosted
+  `@sparticuz/chromium` build (declared in devDependencies), extracted on
+  first run to `/tmp/chromium-pf` because the sandbox cannot reach Playwright's
+  browser CDN.
 
 Screenshots and JSON results land in `artifacts/` (gitignored).
 
@@ -61,8 +64,8 @@ cd web && npx next build && npx next start -p 3000 -H 0.0.0.0 &
 
 # 2. From the repo root
 node tests/e2e/smoke.mjs           # 21 anonymous checks
-node tests/e2e/app.mjs             # 35 authenticated deep-flow checks
-node tests/e2e/sweep.mjs           # 69 authenticated route-render checks
+node tests/e2e/app.mjs             # 40 authenticated deep-flow checks
+node tests/e2e/sweep.mjs           # 72 authenticated route-render checks
                                    # (every dashboard/admin route, NaN guards)
 node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
 ```

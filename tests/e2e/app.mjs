@@ -147,6 +147,31 @@ async function suite(role) {
       const ordersText = await page.locator('body').innerText();
       assert('orders table shows drip progress', /Drip\s*·?\s*2\/5 runs/.test(ordersText.replace(/\n/g, ' ')));
       await shot('16-orders.png');
+
+      /* --------------------------------------------------------- Settings */
+      // The sidebar gear used to dump users on the support ticket screen.
+      const gearHref = await page.locator('a[aria-label="Settings"]').first().getAttribute('href');
+      assert('sidebar settings gear opens user settings', gearHref === '/dashboard/settings', gearHref);
+      await goto('/dashboard/settings');
+      await page.waitForSelector('text=Profile');
+      const settingsText = await page.locator('body').innerText();
+      assert('settings renders profile identity', settingsText.includes('hassan_tester') && settingsText.includes('PFTEST001'));
+      assert('settings renders wallet balance', settingsText.includes('125.50'));
+
+      // Client-side validation blocks a short password
+      await page.locator('#new-password').fill('short');
+      await page.locator('#confirm-password').fill('short');
+      await page.getByRole('button', { name: /update password/i }).click();
+      await page.waitForSelector('text=at least 8 characters');
+      assert('settings rejects short password', true);
+
+      // Happy path updates through Supabase auth and confirms via toast
+      await page.locator('#new-password').fill('NewStrongPass2026');
+      await page.locator('#confirm-password').fill('NewStrongPass2026');
+      await page.getByRole('button', { name: /update password/i }).click();
+      await page.waitForSelector('text=Password updated', { timeout: 8000 });
+      assert('settings password update succeeds', true);
+      await shot('17-user-settings.png');
     } else {
       /* ------------------------------------------------------ Admin shell */
       await goto('/admin');

@@ -32,6 +32,7 @@ const USER_ROUTES = [
   '/dashboard/live-chat',
   '/dashboard/support',
   '/dashboard/api',
+  '/dashboard/settings',
 ];
 
 const ADMIN_ROUTES = [
