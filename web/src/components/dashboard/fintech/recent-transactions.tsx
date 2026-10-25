@@ -17,7 +17,7 @@ export function RecentTransactions({
   const recent = orders.slice(0, 6);
 
   return (
-    <section className="pf-card p-5 sm:p-6">
+    <section className="pf-card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-xl font-bold text-white">Recent Transactions</h3>
         <Link

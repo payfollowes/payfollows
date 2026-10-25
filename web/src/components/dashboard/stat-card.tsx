@@ -26,12 +26,12 @@ export function StatCard({ title, value, subtitle, icon: Icon, tone = 'purple', 
     >
       <div className="relative z-[1] flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
-          <p className="mt-2 truncate font-display text-2xl font-bold text-white tabular">{value}</p>
-          {subtitle && <p className="mt-1 truncate text-xs text-muted-foreground">{subtitle}</p>}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
+          <p className="mt-1.5 truncate font-display text-xl font-bold text-white tabular">{value}</p>
+          {subtitle && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subtitle}</p>}
         </div>
         <span className={cn('pf-stat-icon', `pf-stat-icon-${tone}`)}>
-          <Icon className="h-5 w-5" strokeWidth={2.1} />
+          <Icon className="h-[18px] w-[18px]" strokeWidth={2.1} />
         </span>
       </div>
     </motion.div>

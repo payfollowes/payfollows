@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Settings } from 'lucide-react';
@@ -23,41 +24,16 @@ function isActive(pathname: string, item: NavItem, variant: 'user' | 'admin') {
   return item.href === `/${variant}` ? pathname === item.href : pathname.startsWith(item.href);
 }
 
-function RailItem({
-  item,
-  active,
-  onClick,
-}: {
-  item: NavItem;
-  active: boolean;
-  onClick?: () => void;
-}) {
-  const Icon = item.icon;
+function RowLabel({ expanded, children }: { expanded: boolean; children: React.ReactNode }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Link
-          href={item.href}
-          onClick={onClick}
-          aria-label={item.label}
-          aria-current={active ? 'page' : undefined}
-          className={cn(
-            'relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300',
-            active
-              ? 'bg-primary-gradient text-white shadow-glow-brand'
-              : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
-          )}
-        >
-          <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
-          {item.badge && !active && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary-400 shadow-glow-xs" />
-          )}
-        </Link>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="ml-3">
-        {item.label}
-      </TooltipContent>
-    </Tooltip>
+    <span
+      className={cn(
+        'whitespace-nowrap text-sm font-semibold transition-opacity duration-200',
+        expanded ? 'opacity-100' : 'pointer-events-none opacity-0'
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -66,6 +42,7 @@ export function IconSidebar({ variant }: IconSidebarProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const nav = variant === 'admin' ? ADMIN_NAV : USER_NAV;
+  const [expanded, setExpanded] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -77,45 +54,102 @@ export function IconSidebar({ variant }: IconSidebarProps) {
 
   return (
     <TooltipProvider delayDuration={150}>
-      {/* Desktop fixed icon rail */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[84px] flex-col items-center border-r border-[rgba(167,139,250,0.12)] bg-ink-900/80 py-5 backdrop-blur-2xl lg:flex">
-        <Link href="/" aria-label="PayFollows home" className="mb-8">
-          <LogoMark className="h-11 w-11 rounded-2xl" />
-        </Link>
+      {/* Desktop rail — icon-only by default, expands to full labels on hover */}
+      <aside
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 hidden flex-col overflow-hidden border-r border-[rgba(167,139,250,0.12)] bg-ink-900/95 backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-out lg:flex',
+          expanded ? 'w-[264px] shadow-2xl' : 'w-[84px]'
+        )}
+      >
+        {/* Brand */}
+        <div className="flex h-[72px] shrink-0 items-center px-[18px]">
+          <Link href="/" aria-label="PayFollows home" className="flex items-center">
+            <LogoMark className="h-10 w-10 shrink-0 rounded-xl" />
+            <span
+              className={cn(
+                'ml-3 whitespace-nowrap font-display text-lg font-bold tracking-tight text-white transition-opacity duration-200',
+                expanded ? 'opacity-100' : 'pointer-events-none opacity-0'
+              )}
+            >
+              Pay<span className="gradient-text">Follows</span>
+            </span>
+          </Link>
+        </div>
 
-        <nav className="flex flex-1 flex-col items-center gap-2.5">
-          {nav.map((item) => (
-            <RailItem
-              key={item.href}
-              item={item}
-              active={isActive(pathname, item, variant)}
-            />
-          ))}
+        {/* Primary nav */}
+        <nav className="no-scrollbar flex-1 space-y-1 overflow-y-auto px-3 py-2">
+          {nav.map((item) => {
+            const active = isActive(pathname, item, variant);
+            const Icon = item.icon;
+            return (
+              <Tooltip key={item.href} open={expanded ? false : undefined}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    aria-label={item.label}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'relative flex h-11 items-center rounded-xl px-2 transition-all duration-200',
+                      active
+                        ? 'bg-primary-gradient text-white shadow-glow-brand'
+                        : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
+                    )}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                      <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
+                    </span>
+                    <RowLabel expanded={expanded}>{item.label}</RowLabel>
+                    {item.badge && !active && (
+                      <span className="absolute right-3 top-2.5 h-2 w-2 rounded-full bg-primary-400 shadow-glow-xs" />
+                    )}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="ml-3">
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
         </nav>
 
-        <div className="flex flex-col items-center gap-2.5">
-          <Tooltip>
+        {/* Settings + sign out — always visible, labels on expand */}
+        <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-3">
+          <Tooltip open={expanded ? false : undefined}>
             <TooltipTrigger asChild>
               <Link
                 href={settingsHref}
                 aria-label="Settings"
-                className="flex h-12 w-12 items-center justify-center rounded-2xl text-muted-foreground transition-all hover:bg-white/[0.06] hover:text-foreground"
+                className={cn(
+                  'flex h-11 items-center rounded-xl px-2 transition-all duration-200',
+                  pathname === settingsHref
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
+                )}
               >
-                <Settings className="h-5 w-5" strokeWidth={1.8} />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                  <Settings className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <RowLabel expanded={expanded}>Settings</RowLabel>
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" className="ml-3">
               Settings
             </TooltipContent>
           </Tooltip>
-          <Tooltip>
+
+          <Tooltip open={expanded ? false : undefined}>
             <TooltipTrigger asChild>
               <button
                 onClick={handleSignOut}
                 aria-label="Sign out"
-                className="flex h-12 w-12 items-center justify-center rounded-2xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-400"
+                className="flex h-11 w-full items-center rounded-xl px-2 text-muted-foreground transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
               >
-                <LogOut className="h-5 w-5" strokeWidth={1.8} />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                  <LogOut className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <RowLabel expanded={expanded}>Sign out</RowLabel>
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="ml-3">

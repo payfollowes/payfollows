@@ -59,24 +59,38 @@ export default function DashboardOverviewPage() {
       {/* Personalized welcome — compact, inside content (page title lives in topbar) */}
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="font-display text-xl font-bold text-white sm:text-2xl">
+          <p className="font-display text-lg font-bold text-white sm:text-xl">
             Welcome back, <span className="gradient-text">{profile?.username ?? 'friend'}</span>
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">Here&apos;s what&apos;s happening across your account today.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">Here&apos;s what&apos;s happening across your account today.</p>
         </div>
       </div>
 
+      {/* ── KPI row: key numbers first, above the charts ── */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[92px] rounded-2xl" />)
+        ) : (
+          <>
+            <StatCard index={0} title="Total Orders" value={orders.length.toLocaleString()} subtitle="Orders all time" icon={ClipboardList} tone="purple" />
+            <StatCard index={1} title="Total Spent" value={formatAmount(profile?.total_spent ?? 0)} subtitle="Lifetime spend" icon={DollarSign} tone="red" />
+            <StatCard index={2} title="Active Balance" value={formatAmount(profile?.balance ?? 0)} subtitle="Available funds" icon={Wallet} tone="green" />
+            <StatCard index={3} title="Total Points" value="Coming Soon" subtitle="Loyalty rewards" icon={Sparkles} tone="amber" />
+          </>
+        )}
+      </div>
+
       {/* ── Premium fintech composition: center workspace + right finance rail ── */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         {/* Center column */}
-        <div className="space-y-6">
+        <div className="space-y-5">
           {loading ? (
             <Skeleton className="h-[420px] rounded-3xl" />
           ) : (
             <BalanceOverview orders={orders} balance={profile?.balance ?? 0} formatAmount={formatAmount} />
           )}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <PromoCard />
             {loading ? (
               <Skeleton className="h-[380px] rounded-3xl" />
@@ -154,7 +168,7 @@ export default function DashboardOverviewPage() {
         </div>
 
         {/* Right finance rail */}
-        <div className="space-y-6">
+        <div className="space-y-5">
           {loading ? (
             <Skeleton className="h-[420px] rounded-3xl" />
           ) : (
@@ -202,20 +216,6 @@ export default function DashboardOverviewPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* ── Secondary SMM metrics ── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-3xl" />)
-        ) : (
-          <>
-            <StatCard index={0} title="Total Orders" value={orders.length.toLocaleString()} subtitle="Orders all time" icon={ClipboardList} tone="purple" />
-            <StatCard index={1} title="Total Spent" value={formatAmount(profile?.total_spent ?? 0)} subtitle="Lifetime spend" icon={DollarSign} tone="red" />
-            <StatCard index={2} title="Active Balance" value={formatAmount(profile?.balance ?? 0)} subtitle="Available funds" icon={Wallet} tone="green" />
-            <StatCard index={3} title="Total Points" value="Coming Soon" subtitle="Loyalty rewards" icon={Sparkles} tone="amber" />
-          </>
-        )}
       </div>
     </DashboardShell>
   );

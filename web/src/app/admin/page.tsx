@@ -60,10 +60,10 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat icon={<Clock className="h-5 w-5" strokeWidth={2.1} />} label="Pending Orders" value={stats?.pendingOrders ?? 0} loading={loading} tone="amber" />
-        <MiniStat icon={<CheckCircle2 className="h-5 w-5" strokeWidth={2.1} />} label="Completed Orders" value={stats?.completedOrders ?? 0} loading={loading} tone="green" />
-        <MiniStat icon={<LifeBuoy className="h-5 w-5" strokeWidth={2.1} />} label="Open Tickets" value={tickets.filter((t) => t.status === 'open').length} loading={loading} tone="blue" />
-        <MiniStat icon={<DollarSign className="h-5 w-5" strokeWidth={2.1} />} label="Recent Orders" value={orders.length} loading={loading} tone="purple" />
+        <MiniStat icon={<Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />} label="Pending Orders" value={stats?.pendingOrders ?? 0} loading={loading} tone="amber" />
+        <MiniStat icon={<CheckCircle2 className="h-[18px] w-[18px]" strokeWidth={2.1} />} label="Completed Orders" value={stats?.completedOrders ?? 0} loading={loading} tone="green" />
+        <MiniStat icon={<LifeBuoy className="h-[18px] w-[18px]" strokeWidth={2.1} />} label="Open Tickets" value={tickets.filter((t) => t.status === 'open').length} loading={loading} tone="blue" />
+        <MiniStat icon={<DollarSign className="h-[18px] w-[18px]" strokeWidth={2.1} />} label="Recent Orders" value={orders.length} loading={loading} tone="purple" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
@@ -150,11 +150,11 @@ function MiniStat({
   tone: 'amber' | 'green' | 'blue' | 'purple';
 }) {
   return (
-    <div className={`pf-stat flex items-center gap-4 pf-stat-tone-${tone}`}>
+    <div className={`pf-stat flex items-center gap-3 pf-stat-tone-${tone}`}>
       <span className={`pf-stat-icon pf-stat-icon-${tone}`}>{icon}</span>
       <div className="relative z-[1]">
-        <p className="font-display text-2xl font-bold text-white tabular">{loading ? '—' : value.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-display text-xl font-bold text-white tabular">{loading ? '—' : value.toLocaleString()}</p>
+        <p className="text-[11px] text-muted-foreground">{label}</p>
       </div>
     </div>
   );

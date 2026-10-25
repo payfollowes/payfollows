@@ -12,7 +12,7 @@ export function WalletPanel({
   formatAmount: (n: number) => string;
 }) {
   return (
-    <section className="glow-panel relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-700 via-primary-600 to-brand-bright p-5 sm:p-6">
+    <section className="glow-panel relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-700 via-primary-600 to-brand-bright p-4 sm:p-5">
       <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/15 blur-3xl" />
       <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#4c1d95]/50 blur-3xl" />
 

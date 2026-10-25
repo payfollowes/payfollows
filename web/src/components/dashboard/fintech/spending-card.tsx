@@ -35,21 +35,23 @@ export function SpendingCard({
       : chartData.findIndex((d) => d.fullLabel === base[selected]?.fullLabel);
 
   return (
-    <section className="pf-card p-5 sm:p-6">
+    <section className="pf-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-xl font-bold text-white">Monthly Spending</h3>
           <div className="mt-1.5 flex items-center gap-2.5">
             <span className="font-display text-2xl font-bold text-white tabular">{formatAmount(total)}</span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold',
-                change >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
-              )}
-            >
-              <ArrowUpRight className={cn('h-3 w-3', change < 0 && 'rotate-180')} />
-              {Math.abs(change).toFixed(2)}%
-            </span>
+            {orders.length > 0 && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold',
+                  change >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
+                )}
+              >
+                <ArrowUpRight className={cn('h-3 w-3', change < 0 && 'rotate-180')} />
+                {Math.abs(change).toFixed(2)}%
+              </span>
+            )}
           </div>
         </div>
 

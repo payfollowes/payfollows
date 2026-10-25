@@ -62,9 +62,19 @@ export function NotificationBell() {
     mounted.current = true;
     void refresh();
     const id = setInterval(() => void refresh(), POLL_MS);
+    // Refetch when the user returns to the tab/window so new announcements,
+    // chat replies and ticket responses surface without a 45s wait.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    const onFocus = () => void refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
     return () => {
       mounted.current = false;
       clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
     };
   }, [refresh]);
 

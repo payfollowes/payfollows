@@ -33,7 +33,7 @@ export function BalanceOverview({
   );
 
   return (
-    <section className="pf-card glow-panel p-5 sm:p-6">
+    <section className="pf-card glow-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-muted-foreground">Total Balance</p>
@@ -41,15 +41,17 @@ export function BalanceOverview({
             <h2 className="font-display text-3xl font-bold text-white tabular sm:text-4xl">
               {formatAmount(balance)}
             </h2>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
-                change >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
-              )}
-            >
-              {change >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5 rotate-180" />}
-              {Math.abs(change).toFixed(2)}%
-            </span>
+            {orders.length > 0 && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
+                  change >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
+                )}
+              >
+                {change >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5 rotate-180" />}
+                {Math.abs(change).toFixed(2)}%
+              </span>
+            )}
           </div>
         </div>
 
