@@ -183,6 +183,28 @@ export const authAPI = {
     return data;
   },
 
+  // Sends a Supabase password-recovery email. The link points at /auth/callback
+  // which exchanges the PKCE code and lands the user on /update-password.
+  async requestPasswordReset(email: string, redirectTo: string) {
+    const { data, error } = await runQuery(
+      supabase.auth.resetPasswordForEmail(email, { redirectTo }),
+      'request password reset'
+    );
+    if (error) throw error;
+    return data;
+  },
+
+  // Sets a new password for the recovered session (must run after the callback
+  // has established the recovery session).
+  async updatePassword(newPassword: string) {
+    const { data, error } = await runQuery(
+      supabase.auth.updateUser({ password: newPassword }),
+      'update password'
+    );
+    if (error) throw error;
+    return data;
+  },
+
   // Rotates the reseller API key via the authenticated SECURITY DEFINER RPC.
   // The guard trigger blocks direct client writes of user_profiles.api_key,
   // so key rotation must go through this RPC.
