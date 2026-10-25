@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, RefreshCw, Undo2 } from 'lucide-react';
+import { Search, RefreshCw, Undo2, Droplets } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -137,6 +137,12 @@ export default function AdminOrdersPage() {
                       <TableCell className="hidden max-w-[220px] md:table-cell">
                         <p className="truncate text-sm">{order.service?.name || order.service_id}</p>
                         <p className="truncate text-[11px] text-muted-foreground">{truncateMiddle(order.link, 30)}</p>
+                        {order.is_dripfeed && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
+                            <Droplets className="h-3 w-3" />
+                            Drip {order.runs_delivered ?? 0}/{order.runs} · every {order.interval_minutes}m
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{order.quantity.toLocaleString()}</TableCell>
                       <TableCell className="font-semibold">{formatAmount(order.charge)}</TableCell>

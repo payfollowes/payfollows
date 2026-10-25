@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Timer,
   Sparkles,
+  Droplets,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -24,6 +25,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -53,6 +55,9 @@ function NewOrderInner() {
   const [serviceId, setServiceId] = useState('');
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [dripEnabled, setDripEnabled] = useState(false);
+  const [dripRuns, setDripRuns] = useState('5');
+  const [dripInterval, setDripInterval] = useState('60');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -93,6 +98,10 @@ function NewOrderInner() {
   const qty = Number(quantity) || 0;
   const charge = selected && qty > 0 ? (selected.rate_per_1000 / 1000) * qty : 0;
   const quantityValid = selected ? qty >= selected.min_quantity && qty <= selected.max_quantity : false;
+  const runs = Number(dripRuns) || 0;
+  const intervalMinutes = Number(dripInterval) || 0;
+  const dripValid = !dripEnabled || (runs >= 2 && runs <= 100000 && intervalMinutes >= 1 && intervalMinutes <= 10080);
+  const perRun = dripEnabled && runs > 0 ? Math.floor(qty / runs) : 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +109,8 @@ function NewOrderInner() {
     if (!link.trim()) return toast.error('Please enter your content link');
     if (!quantityValid)
       return toast.error(`Quantity must be between ${selected.min_quantity} and ${selected.max_quantity}`);
+    if (dripEnabled && !dripValid)
+      return toast.error('Drip-feed needs 2+ runs and an interval between 1 minute and 7 days');
     if ((profile?.balance ?? 0) < charge) return toast.error('Insufficient balance — please add funds first');
 
     setSubmitting(true);
@@ -108,7 +119,10 @@ function NewOrderInner() {
         selected.id,
         link.trim(),
         qty,
-        selected.completion_time ?? 24
+        selected.completion_time ?? 24,
+        undefined,
+        undefined,
+        dripEnabled ? { runs, intervalMinutes } : undefined
       );
 
       // Best-effort placement through the provider bridge
@@ -276,6 +290,109 @@ function NewOrderInner() {
                       )}
                     </div>
 
+                    {/* Drip-feed delivery */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
+                            <Droplets className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-white">Drip-feed delivery</p>
+                            <p className="text-xs text-muted-foreground">
+                              Split the total quantity into gradual runs instead of one instant delivery
+                            </p>
+                          </div>
+                        </div>
+                        <Switch checked={dripEnabled} onCheckedChange={setDripEnabled} />
+                      </div>
+
+                      {dripEnabled && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="mt-4 space-y-4 overflow-hidden"
+                        >
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="runs" className="text-xs">
+                                Number of runs
+                              </Label>
+                              <Input
+                                id="runs"
+                                type="number"
+                                min={2}
+                                max={100000}
+                                value={dripRuns}
+                                onChange={(e) => setDripRuns(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="interval" className="text-xs">
+                                Interval (minutes)
+                              </Label>
+                              <Input
+                                id="interval"
+                                type="number"
+                                min={1}
+                                max={10080}
+                                value={dripInterval}
+                                onChange={(e) => setDripInterval(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { label: '30 min', mins: 30 },
+                              { label: '1 hour', mins: 60 },
+                              { label: '6 hours', mins: 360 },
+                              { label: '24 hours', mins: 1440 },
+                            ].map((preset) => (
+                              <button
+                                key={preset.mins}
+                                type="button"
+                                onClick={() => setDripInterval(String(preset.mins))}
+                                className={cn(
+                                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                                  intervalMinutes === preset.mins
+                                    ? 'border-primary-500/50 bg-primary-500/15 text-primary-200'
+                                    : 'border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-white'
+                                )}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                          {qty > 0 && runs >= 2 && (
+                            <div className="rounded-xl border border-primary-500/20 bg-primary-500/[0.08] p-3 text-xs leading-relaxed text-primary-100/90">
+                              <span className="font-bold text-white">{qty.toLocaleString()}</span> total units split
+                              across <span className="font-bold text-white">{runs}</span> runs
+                              {perRun > 0 && (
+                                <>
+                                  {' '}
+                                  (~<span className="font-bold text-white">{perRun.toLocaleString()}</span> per run),
+                                  delivered every{' '}
+                                  <span className="font-bold text-white">
+                                    {intervalMinutes >= 1440
+                                      ? `${intervalMinutes / 1440} day(s)`
+                                      : intervalMinutes >= 60
+                                        ? `${intervalMinutes / 60} hour(s)`
+                                        : `${intervalMinutes} min`}
+                                  </span>
+                                </>
+                              )}
+                              . Total charge stays {formatAmount(charge)}.
+                            </div>
+                          )}
+                          {!dripValid && (
+                            <p className="text-xs font-medium text-red-400">
+                              Runs must be 2–100000 and interval 1–10080 minutes (7 days).
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
+
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
                         <p className="text-xs text-muted-foreground">Total Charge</p>
@@ -283,7 +400,13 @@ function NewOrderInner() {
                           {formatAmount(charge)}
                         </p>
                       </div>
-                      <Button type="submit" size="lg" loading={submitting} className="sm:px-10" disabled={!selected}>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        loading={submitting}
+                        className="sm:px-10"
+                        disabled={!selected || (dripEnabled && !dripValid)}
+                      >
                         <ShoppingCart /> Buy Service
                       </Button>
                     </div>

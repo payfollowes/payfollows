@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Eye, EyeOff, UserPlus, Chrome } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Mail, Lock, User, Eye, EyeOff, UserPlus, Chrome, Gift, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,21 @@ import { AuthShell } from '@/components/shared/auth-shell';
 import { authAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const { refreshProfile } = useAuth();
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const attribution = useMemo(() => {
+    const ref = params.get('ref')?.trim() || '';
+    const child = params.get('child_of')?.trim() || '';
+    if (child) return { kind: 'child' as const, code: child, label: `You're joining as a child panel of ${child}` };
+    if (ref) return { kind: 'ref' as const, code: ref, label: `Referral code ${ref} will be linked to your account` };
+    return null;
+  }, [params]);
 
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -30,10 +39,17 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const res = await authAPI.signUp(form.email, form.password, form.username.trim());
+      const metadata: Record<string, string> = {};
+      if (attribution?.kind === 'child') metadata.child_code = attribution.code;
+      if (attribution?.kind === 'ref') metadata.referral_code = attribution.code;
+      const res = await authAPI.signUp(form.email, form.password, form.username.trim(), metadata);
       if (res?.session) {
         await refreshProfile();
-        toast.success('Account created — welcome to PayFollows!');
+        toast.success(
+          attribution
+            ? `Account created — ${attribution.kind === 'child' ? 'child panel linked' : 'referral linked'}!`
+            : 'Account created — welcome to PayFollows!'
+        );
         router.push('/dashboard');
       } else {
         toast.success('Account created! Check your email to confirm, then login.');
@@ -59,6 +75,24 @@ export default function RegisterPage() {
         </p>
       }
     >
+      {attribution && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-primary-500/25 bg-primary-500/10 p-4">
+          {attribution.kind === 'child' ? (
+            <Users className="mt-0.5 h-5 w-5 shrink-0 text-primary-300" />
+          ) : (
+            <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary-300" />
+          )}
+          <div>
+            <p className="text-sm font-semibold text-white">{attribution.label}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {attribution.kind === 'child'
+                ? 'Your parent can track your orders and transfer balance to your wallet.'
+                : 'Both of you unlock rewards once you make your first deposit.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={submit} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
@@ -155,5 +189,13 @@ export default function RegisterPage() {
         <Chrome /> Continue with Google
       </Button>
     </AuthShell>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

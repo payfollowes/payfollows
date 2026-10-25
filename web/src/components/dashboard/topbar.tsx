@@ -31,6 +31,7 @@ import { useCurrency } from '@/lib/currency';
 import { USER_NAV, ADMIN_NAV } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { NotificationBell } from './notification-bell';
 
 interface TopbarProps {
   variant: 'user' | 'admin';
@@ -193,14 +194,7 @@ export function DashboardTopbar({ variant }: TopbarProps) {
           <RefreshCw className={cn('h-[18px] w-[18px]', spinning && 'animate-spin')} />
         </button>
 
-        <button
-          onClick={() => toast.info('You are all caught up — no new notifications')}
-          aria-label="Notifications"
-          className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-muted-foreground transition-all hover:text-foreground"
-        >
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-ink-950 bg-primary-400 shadow-glow-xs" />
-        </button>
+        <NotificationBell />
 
         <button
           onClick={() => toast('Dark mode is curated for the PayFollows experience', { icon: '🌙' })}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle } from 'lucide-react';
+import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle, Droplets } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +171,12 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell className="max-w-[220px]">
                         <p className="truncate text-sm font-medium text-white">{order.service?.name || order.service_id}</p>
+                        {order.is_dripfeed && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
+                            <Droplets className="h-3 w-3" />
+                            Drip · {order.runs_delivered ?? 0}/{order.runs} runs
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <a

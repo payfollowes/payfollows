@@ -13,6 +13,11 @@ import {
   Megaphone,
   BarChart3,
   Percent,
+  Gift,
+  Network,
+  MessageSquare,
+  TrendingUp,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -29,6 +34,9 @@ export const USER_NAV: NavItem[] = [
   { label: 'Orders', href: '/dashboard/orders', icon: ClipboardList },
   { label: 'Services', href: '/dashboard/services', icon: Grid3X3 },
   { label: 'Add Funds', href: '/dashboard/add-funds', icon: Wallet },
+  { label: 'Referrals', href: '/dashboard/referrals', icon: Gift },
+  { label: 'Child Panels', href: '/dashboard/child-panels', icon: Network },
+  { label: 'Live Chat', href: '/dashboard/live-chat', icon: MessageSquare },
   { label: 'Support', href: '/dashboard/support', icon: LifeBuoy },
   { label: 'API', href: '/dashboard/api', icon: KeyRound },
 ];
@@ -40,7 +48,10 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Services', href: '/admin/services', icon: Grid3X3 },
   { label: 'Providers', href: '/admin/providers', icon: Server },
   { label: 'Margins', href: '/admin/margins', icon: Percent },
+  { label: 'Financial', href: '/admin/financial', icon: TrendingUp },
   { label: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { label: 'Live Chat', href: '/admin/live-chat', icon: MessageSquare },
+  { label: 'Audit Logs', href: '/admin/audit', icon: ScrollText },
   { label: 'Announcements', href: '/admin/announcements', icon: Megaphone },
   { label: 'Support', href: '/admin/support', icon: LifeBuoy },
   { label: 'Settings', href: '/admin/settings', icon: Settings },

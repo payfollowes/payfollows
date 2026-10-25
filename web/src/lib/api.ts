@@ -3,14 +3,22 @@
 import { getSessionUser, supabase, withSupabaseTimeout } from './supabase/client';
 import type {
   Announcement,
+  AppNotification,
+  AuditLog,
   BalanceTransaction,
+  ChatChannel,
+  ChatMessage,
   MarginRule,
   MarginRuleInput,
   Order,
   OrderStatus,
   Payment,
+  PlatformEarning,
+  PlatformSettings,
+  PlatformSummaryRow,
   Provider,
   ProviderServiceLink,
+  ReferralReward,
   Service,
   SupportTicket,
   UserProfile,
@@ -147,9 +155,14 @@ export const authAPI = {
     return (res as any).data;
   },
 
-  async signUp(email: string, password: string, username: string) {
+  async signUp(
+    email: string,
+    password: string,
+    username: string,
+    metadata: Record<string, string> = {}
+  ) {
     const { data, error } = await runQuery(
-      supabase.auth.signUp({ email, password, options: { data: { username } } }),
+      supabase.auth.signUp({ email, password, options: { data: { username, ...metadata } } }),
       'auth sign up'
     );
     if (error) throw error;
@@ -329,7 +342,8 @@ export const ordersAPI = {
     quantity: number,
     deliveryTime = 24,
     providerId?: string,
-    providerOrderId?: string
+    providerOrderId?: string,
+    drip?: { runs: number; intervalMinutes: number }
   ): Promise<Order> {
     // Atomic, server-side operation: the place_order RPC validates the
     // service, resolves the margin-managed rate, checks the balance under a
@@ -344,6 +358,8 @@ export const ordersAPI = {
         p_delivery_time: deliveryTime,
         p_provider_id: providerId ?? null,
         p_provider_order_id: providerOrderId ?? null,
+        p_runs: drip?.runs ?? null,
+        p_interval_minutes: drip?.intervalMinutes ?? null,
       }),
       'place order'
     );
@@ -939,5 +955,340 @@ export const walletAPI = {
     );
     if (error) throw error;
     return (data as BalanceTransaction[]) ?? [];
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Notifications (P2)                                                  */
+/* ------------------------------------------------------------------ */
+
+export const notificationsAPI = {
+  async list(limit = 20): Promise<AppNotification[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      'list notifications'
+    );
+    if (error) throw error;
+    return (data as AppNotification[]) ?? [];
+  },
+
+  async unreadCount(): Promise<number> {
+    const { count, error } = await runQuery(
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .is('read_at', null),
+      'unread notifications'
+    );
+    if (error) throw error;
+    return count ?? 0;
+  },
+
+  async markRead(id: string) {
+    const { error } = await runQuery(
+      supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id),
+      'mark notification read'
+    );
+    if (error) throw error;
+  },
+
+  async markAllRead() {
+    const { error } = await runQuery(
+      supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .is('read_at', null),
+      'mark all notifications read'
+    );
+    if (error) throw error;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Referrals (P2)                                                      */
+/* ------------------------------------------------------------------ */
+
+export const referralAPI = {
+  async listReferredUsers(): Promise<Array<UserProfile & { rewards?: ReferralReward[] }>> {
+    const user = await getAuthenticatedUser();
+    const { data, error } = await runQuery(
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('referred_by', user.id)
+        .order('created_at', { ascending: false }),
+      'referred users'
+    );
+    if (error) throw error;
+    return (data as UserProfile[]) ?? [];
+  },
+
+  async listRewards(): Promise<ReferralReward[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('referral_rewards')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      'referral rewards'
+    );
+    if (error) throw error;
+    return (data as ReferralReward[]) ?? [];
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Child panels (P2)                                                   */
+/* ------------------------------------------------------------------ */
+
+export const childPanelAPI = {
+  async listChildren(): Promise<UserProfile[]> {
+    const user = await getAuthenticatedUser();
+    const { data, error } = await runQuery(
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('parent_id', user.id)
+        .order('created_at', { ascending: false }),
+      'child panels'
+    );
+    if (error) throw error;
+    return (data as UserProfile[]) ?? [];
+  },
+
+  async attachByCode(code: string): Promise<string> {
+    const { data, error } = await runQuery(
+      supabase.rpc('attach_to_parent', { p_code: code }),
+      'attach child panel'
+    );
+    if (error) throw error;
+    return data as string;
+  },
+
+  async transfer(childId: string, amount: number): Promise<number> {
+    const { data, error } = await runQuery(
+      supabase.rpc('transfer_to_child', { p_child_id: childId, p_amount: amount }),
+      'transfer to child'
+    );
+    if (error) throw error;
+    return data as number;
+  },
+
+  async childOrders(childId: string): Promise<Order[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('orders')
+        .select('*, service:services(id, name)')
+        .eq('user_id', childId)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      'child orders'
+    );
+    if (error) throw error;
+    return (data as Order[]) ?? [];
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Audit logs (P2, admin only via RLS)                                 */
+/* ------------------------------------------------------------------ */
+
+export const auditAPI = {
+  async list(options: { limit?: number; entityType?: string } = {}): Promise<AuditLog[]> {
+    const limit = options.limit ?? 50;
+    let query = supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (options.entityType) query = query.eq('entity_type', options.entityType);
+    const { data, error } = await runQuery(query, 'audit logs');
+    if (error) throw error;
+    return (data as AuditLog[]) ?? [];
+  },
+
+  async record(action: string, entityType?: string, entityId?: string, metadata?: Record<string, unknown>) {
+    const { error } = await runQuery(
+      supabase.rpc('write_audit', {
+        p_action: action,
+        p_entity_type: entityType ?? null,
+        p_entity_id: entityId ?? null,
+        p_metadata: metadata ?? {},
+      }),
+      'write audit'
+    );
+    if (error) throw error;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Live chat (P2) — tables pre-existed with full RLS                   */
+/* ------------------------------------------------------------------ */
+
+export const chatAPI = {
+  async getOrCreateChannel(): Promise<ChatChannel> {
+    const user = await getAuthenticatedUser();
+    const { data: existing, error: findError } = await runQuery(
+      supabase
+        .from('chat_channels')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('platform', 'web')
+        .maybeSingle(),
+      'find chat channel'
+    );
+    if (findError) throw findError;
+    if (existing) return existing as ChatChannel;
+
+    const { data: created, error: createError } = await runQuery(
+      supabase
+        .from('chat_channels')
+        .insert({ user_id: user.id, platform: 'web', status: 'open' })
+        .select()
+        .single(),
+      'create chat channel'
+    );
+    if (createError) throw createError;
+    return created as ChatChannel;
+  },
+
+  async listMessages(channelId: string): Promise<ChatMessage[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true })
+        .limit(200),
+      'chat messages'
+    );
+    if (error) throw error;
+    return (data as ChatMessage[]) ?? [];
+  },
+
+  async sendMessage(channelId: string, body: string, senderRole: 'user' | 'admin'): Promise<ChatMessage> {
+    const user = await getAuthenticatedUser();
+    const { data, error } = await runQuery(
+      supabase
+        .from('chat_messages')
+        .insert({ channel_id: channelId, sender_id: user.id, sender_role: senderRole, body: body.trim() })
+        .select()
+        .single(),
+      'send chat message'
+    );
+    if (error) throw error;
+    return data as ChatMessage;
+  },
+
+  async listChannels(): Promise<ChatChannel[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('chat_channels')
+        .select('*, user:user_profiles(username, email)')
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(100),
+      'chat channels'
+    );
+    if (error) throw error;
+    return (data as ChatChannel[]) ?? [];
+  },
+
+  async setChannelStatus(channelId: string, status: ChatChannel['status']) {
+    const { error } = await runQuery(
+      supabase.from('chat_channels').update({ status }).eq('id', channelId),
+      'update chat channel'
+    );
+    if (error) throw error;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Platform settings (P2)                                              */
+/* ------------------------------------------------------------------ */
+
+export const settingsAPI = {
+  async get(): Promise<PlatformSettings> {
+    const { data, error } = await runQuery(
+      supabase.from('app_settings').select('config').eq('id', 'platform').maybeSingle(),
+      'platform settings'
+    );
+    if (error) throw error;
+    return ((data as { config: PlatformSettings } | null)?.config ?? {}) as PlatformSettings;
+  },
+
+  async update(config: PlatformSettings): Promise<PlatformSettings> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('app_settings')
+        .upsert({ id: 'platform', config, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+        .select()
+        .single(),
+      'update platform settings'
+    );
+    if (error) throw error;
+    return (data as { config: PlatformSettings }).config;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Financial screens (P2, admin only via RLS)                          */
+/* ------------------------------------------------------------------ */
+
+export const financialAPI = {
+  async earnings(limit = 50): Promise<PlatformEarning[]> {
+    const { data, error } = await runQuery(
+      supabase
+        .from('platform_earnings')
+        .select('*')
+        .order('order_date', { ascending: false })
+        .limit(limit),
+      'platform earnings'
+    );
+    if (error) throw error;
+    return (data as PlatformEarning[]) ?? [];
+  },
+
+  async summary(days = 30): Promise<PlatformSummaryRow[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { data, error } = await runQuery(
+      supabase
+        .from('platform_summary')
+        .select('*')
+        .gte('date', since.toISOString().slice(0, 10))
+        .order('date', { ascending: true }),
+      'platform summary'
+    );
+    if (error) throw error;
+    return (data as PlatformSummaryRow[]) ?? [];
+  },
+
+  async paymentLogs(limit = 50) {
+    const { data, error } = await runQuery(
+      supabase
+        .from('payment_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      'payment logs'
+    );
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async payouts(limit = 50) {
+    const { data, error } = await runQuery(
+      supabase
+        .from('provider_payouts')
+        .select('*, provider:providers(id, name)')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      'provider payouts'
+    );
+    if (error) throw error;
+    return data ?? [];
   },
 };
