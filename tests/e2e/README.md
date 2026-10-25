@@ -39,7 +39,7 @@ node:http stub (stub-server.mjs) — Supabase REST/RPC/auth + legacy /api
   images. Scroll steps use `behavior:'instant'` because the app ships
   `scroll-behavior:smooth`, which would otherwise animate test jumps and
   never reach deep sections within the waits.
-- **`app.mjs`** — authenticated suite (34 checks, user + admin): identity,
+- **`app.mjs`** — authenticated suite (35 checks, user + admin): identity,
   notification bell, referrals, child panels, live chat, drip-feed ordering,
   orders table, balance-trend curve shape, plus admin overview head-counts,
   financials (including rendered bar heights), audit, settings and channel
