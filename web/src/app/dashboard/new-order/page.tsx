@@ -291,7 +291,7 @@ function NewOrderInner() {
                     </div>
 
                     {/* Drip-feed delivery */}
-                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                    <div className="rounded-2xl pf-card-inner p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-start gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
@@ -457,7 +457,7 @@ function NewOrderInner() {
                         />
                       </div>
 
-                      <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
+                      <div className="rounded-xl pf-card-inner p-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           Notes
                         </p>
@@ -540,7 +540,7 @@ function DetailPill({
     amber: 'text-amber-400 bg-amber-500/15',
   };
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3.5">
+    <div className="rounded-xl pf-card-inner p-3.5">
       <div className="flex items-center gap-2">
         <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', tones[tone])}>
           <Icon className="h-3.5 w-3.5" />

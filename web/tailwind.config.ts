@@ -3,6 +3,22 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   darkMode: ['class'],
   content: ['./src/**/*.{ts,tsx}'],
+  // Component-layer classes composed dynamically (`pf-stat-${kind}-${tone}`)
+  // are invisible to the content scanner — keep them in production CSS.
+  safelist: [
+    'pf-stat-tone-purple',
+    'pf-stat-tone-blue',
+    'pf-stat-tone-green',
+    'pf-stat-tone-amber',
+    'pf-stat-tone-red',
+    'pf-stat-tone-pink',
+    'pf-stat-icon-purple',
+    'pf-stat-icon-blue',
+    'pf-stat-icon-green',
+    'pf-stat-icon-amber',
+    'pf-stat-icon-red',
+    'pf-stat-icon-pink',
+  ],
   theme: {
     container: {
       center: true,

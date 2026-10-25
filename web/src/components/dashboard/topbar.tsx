@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Bell,
   ChevronDown,
@@ -49,6 +49,7 @@ export function DashboardTopbar({ variant }: TopbarProps) {
   const { user, profile, signOut } = useAuth();
   const { currency, setCurrency, currencies, formatAmount } = useCurrency();
   const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [spinning, setSpinning] = useState(false);
@@ -56,6 +57,18 @@ export function DashboardTopbar({ variant }: TopbarProps) {
 
   const nav = variant === 'admin' ? ADMIN_NAV : USER_NAV;
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const pageTitle = useMemo(() => {
+    const match = nav
+      .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0];
+    if (match) return match.label;
+    const seg = pathname.split('/').filter(Boolean).pop() ?? 'Dashboard';
+    return seg
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }, [pathname, nav]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -126,6 +139,14 @@ export function DashboardTopbar({ variant }: TopbarProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-[rgba(167,139,250,0.10)] bg-ink-950/75 px-4 py-3 backdrop-blur-2xl sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
+        {/* Current page title — lives in the topbar instead of repeating above content */}
+        <div className="hidden shrink-0 items-center gap-3 md:flex">
+          <span className="h-8 w-1.5 rounded-full bg-primary-gradient shadow-glow-xs" />
+          <h1 className="whitespace-nowrap font-display text-lg font-bold tracking-tight text-white">
+            {pageTitle}
+          </h1>
+        </div>
+
         {/* Search */}
         <div ref={searchRef} className="relative min-w-0 flex-1">
           <form onSubmit={onSearchSubmit}>

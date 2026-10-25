@@ -198,7 +198,7 @@ export default function AdminFinancialPage() {
                   {payouts.slice(0, 6).map((p) => (
                     <li
                       key={String(p.id)}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2.5 text-sm"
+                      className="flex items-center justify-between rounded-xl pf-card-inner px-4 py-2.5 text-sm"
                     >
                       <span className="text-muted-foreground">
                         {String(p.payout_method || 'payout')} · {formatDateTime(String(p.created_at))}
@@ -220,7 +220,7 @@ export default function AdminFinancialPage() {
                   {logs.slice(0, 6).map((l) => (
                     <li
                       key={String(l.id)}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2.5 text-sm"
+                      className="flex items-center justify-between rounded-xl pf-card-inner px-4 py-2.5 text-sm"
                     >
                       <span className="capitalize text-muted-foreground">{String(l.action || 'event')}</span>
                       <span className="text-xs text-muted-foreground/70">{formatDateTime(String(l.created_at))}</span>

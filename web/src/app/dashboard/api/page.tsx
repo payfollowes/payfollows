@@ -145,7 +145,7 @@ export default function ApiPage() {
             UUIDs, exactly as returned by the API.
           </p>
           {ENDPOINTS.map((ep) => (
-            <div key={ep.action} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
+            <div key={ep.action} className="rounded-xl pf-card-inner p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge variant="info">{ep.action}</Badge>
                 <span className="text-sm text-white">{ep.desc}</span>

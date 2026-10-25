@@ -204,7 +204,7 @@ export default function AdminSettingsPage() {
               Vercel. The live capability map at <code className="text-primary-300">/api/payments/methods</code> reflects
               what is currently configured.
             </p>
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 font-mono text-xs">
+            <div className="rounded-xl pf-card-inner p-4 font-mono text-xs">
               FASTPAY_API_KEY · FASTPAY_WEBHOOK_SECRET · PAYFAST_PASSPHRASE
             </div>
           </CardContent>

@@ -37,7 +37,7 @@ export function LandingNavbar() {
           'container flex h-16 items-center justify-between rounded-full px-4 transition-all duration-300 sm:px-6',
           scrolled
             ? 'border border-[rgba(167,139,250,0.18)] bg-ink-900/85 shadow-card backdrop-blur-2xl'
-            : 'border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl'
+            : 'pf-card-inner backdrop-blur-xl'
         )}
       >
         <Logo />

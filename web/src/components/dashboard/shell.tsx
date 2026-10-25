@@ -13,7 +13,9 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-export function DashboardShell({ variant, title, children }: DashboardShellProps) {
+export function DashboardShell({ variant, children }: DashboardShellProps) {
+  // `title` stays on the props API for every page, but the visible page title
+  // now renders inside DashboardTopbar so it never duplicates above the content.
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -56,13 +58,7 @@ export function DashboardShell({ variant, title, children }: DashboardShellProps
         <DashboardTopbar variant={variant} />
 
         <main className="px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
-          <div className="mx-auto max-w-[1440px] space-y-6">
-            <div className="flex items-center gap-3">
-              <span className="h-8 w-1.5 rounded-full bg-primary-gradient shadow-glow-xs" />
-              <h1 className="font-display text-xl font-bold text-white sm:text-2xl">{title}</h1>
-            </div>
-            {children}
-          </div>
+          <div className="mx-auto max-w-[1440px] space-y-6">{children}</div>
         </main>
       </div>
     </div>

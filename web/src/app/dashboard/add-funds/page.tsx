@@ -188,7 +188,7 @@ function AddFundsInner() {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 text-sm">
+              <div className="space-y-2 rounded-2xl pf-card-inner p-5 text-sm">
                 <Row label="Amount" value={formatAmount(amountNum)} />
                 <Row label="Processing fee (2%)" value={formatAmount(fee)} />
                 <div className="my-2 h-px bg-white/10" />

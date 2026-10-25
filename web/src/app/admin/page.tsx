@@ -60,10 +60,10 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat icon={<Clock className="h-5 w-5" />} label="Pending Orders" value={stats?.pendingOrders ?? 0} loading={loading} tone="text-amber-400 bg-amber-500/15" />
-        <MiniStat icon={<CheckCircle2 className="h-5 w-5" />} label="Completed Orders" value={stats?.completedOrders ?? 0} loading={loading} tone="text-emerald-400 bg-emerald-500/15" />
-        <MiniStat icon={<LifeBuoy className="h-5 w-5" />} label="Open Tickets" value={tickets.filter((t) => t.status === 'open').length} loading={loading} tone="text-blue-400 bg-blue-500/15" />
-        <MiniStat icon={<DollarSign className="h-5 w-5" />} label="Recent Orders" value={orders.length} loading={loading} tone="text-primary-400 bg-primary-500/15" />
+        <MiniStat icon={<Clock className="h-5 w-5" strokeWidth={2.1} />} label="Pending Orders" value={stats?.pendingOrders ?? 0} loading={loading} tone="amber" />
+        <MiniStat icon={<CheckCircle2 className="h-5 w-5" strokeWidth={2.1} />} label="Completed Orders" value={stats?.completedOrders ?? 0} loading={loading} tone="green" />
+        <MiniStat icon={<LifeBuoy className="h-5 w-5" strokeWidth={2.1} />} label="Open Tickets" value={tickets.filter((t) => t.status === 'open').length} loading={loading} tone="blue" />
+        <MiniStat icon={<DollarSign className="h-5 w-5" strokeWidth={2.1} />} label="Recent Orders" value={orders.length} loading={loading} tone="purple" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
@@ -83,7 +83,7 @@ export default function AdminOverviewPage() {
               orders.slice(0, 6).map((order) => {
                 const style = statusStyle(order.status);
                 return (
-                  <div key={order.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+                  <div key={order.id} className="flex items-center justify-between gap-3 rounded-xl pf-card-inner px-4 py-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-white">{order.service?.name || order.service_id}</p>
                       <p className="text-xs text-muted-foreground">
@@ -120,7 +120,7 @@ export default function AdminOverviewPage() {
                 .filter((t) => t.status !== 'closed')
                 .slice(0, 5)
                 .map((t) => (
-                  <div key={t.id} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
+                  <div key={t.id} className="rounded-xl pf-card-inner p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-semibold text-white">{t.subject}</p>
                       <Badge variant="info" className="capitalize shrink-0">{t.status.replace('-', ' ')}</Badge>
@@ -147,15 +147,15 @@ function MiniStat({
   label: string;
   value: number;
   loading: boolean;
-  tone: string;
+  tone: 'amber' | 'green' | 'blue' | 'purple';
 }) {
   return (
-    <Card className="flex items-center gap-4 p-5">
-      <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>{icon}</span>
-      <div>
-        <p className="font-display text-2xl font-bold text-white">{loading ? '—' : value}</p>
+    <div className={`pf-stat flex items-center gap-4 pf-stat-tone-${tone}`}>
+      <span className={`pf-stat-icon pf-stat-icon-${tone}`}>{icon}</span>
+      <div className="relative z-[1]">
+        <p className="font-display text-2xl font-bold text-white tabular">{loading ? '—' : value.toLocaleString()}</p>
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
-    </Card>
+    </div>
   );
 }

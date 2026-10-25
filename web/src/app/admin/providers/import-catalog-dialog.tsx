@@ -119,7 +119,7 @@ export function ImportCatalogDialog({
             </p>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="flex items-center justify-between pf-card-inner rounded-xl px-4 py-3">
             <div>
               <p className="text-sm font-medium text-white">Replace existing mappings</p>
               <p className="text-xs text-muted-foreground">

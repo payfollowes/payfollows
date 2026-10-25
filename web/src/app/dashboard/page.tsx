@@ -55,7 +55,17 @@ export default function DashboardOverviewPage() {
   const popular = useMemo(() => services.filter((s) => s.status === 'active').slice(0, 6), [services]);
 
   return (
-    <DashboardShell variant="user" title={`Welcome back, ${profile?.username ?? 'friend'}`}>
+    <DashboardShell variant="user" title="Dashboard">
+      {/* Personalized welcome — compact, inside content (page title lives in topbar) */}
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="font-display text-xl font-bold text-white sm:text-2xl">
+            Welcome back, <span className="gradient-text">{profile?.username ?? 'friend'}</span>
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Here&apos;s what&apos;s happening across your account today.</p>
+        </div>
+      </div>
+
       {/* ── Premium fintech composition: center workspace + right finance rail ── */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* Center column */}
@@ -113,7 +123,7 @@ export default function DashboardOverviewPage() {
                     >
                       <Link
                         href={`/dashboard/new-order?service=${encodeURIComponent(service.id)}`}
-                        className="pf-card-hover block h-full rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5"
+                        className="pf-card-hover block h-full rounded-2xl pf-card-inner p-5"
                       >
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <Badge variant="secondary">{service.category}</Badge>
@@ -176,7 +186,7 @@ export default function DashboardOverviewPage() {
               ) : (
                 <div className="space-y-3">
                   {announcements.slice(0, 3).map((a) => (
-                    <div key={a.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
+                    <div key={a.id} className="rounded-2xl pf-card-inner p-4">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-white">{a.subject}</p>
                         <Badge variant={a.type === 'warning' ? 'warning' : a.type === 'success' ? 'success' : 'info'}>
