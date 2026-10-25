@@ -75,7 +75,9 @@ export default function AdminMarginsPage() {
     setLoading(true);
     try {
       const [providerRows, ruleRows] = await Promise.all([
-        adminAPI.getAllProviders(),
+        // Provider names only power the filter/dialog labels; never let their
+        // failure (e.g. RLS during the login redirect) block the rules table.
+        adminAPI.getAllProviders().catch(() => [] as Provider[]),
         adminAPI.listMarginRules({ active: activeOnly ? true : undefined }),
       ]);
       setProviders(providerRows);
