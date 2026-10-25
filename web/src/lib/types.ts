@@ -135,3 +135,34 @@ export interface ProviderServiceLink {
   providerId: string;
   providerServiceId: string;
 }
+
+export type MarginType = 'percent' | 'fixed';
+
+export interface MarginRule {
+  id: string;
+  provider_id: string | null;
+  service_id: string | null;
+  category: string | null;
+  margin_type: MarginType;
+  margin_value: number;
+  min_margin: number | null;
+  max_margin: number | null;
+  active: boolean;
+  priority: number;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MarginRuleInput {
+  provider_id?: string | null;
+  service_id?: string | null;
+  category?: string | null;
+  margin_type: MarginType;
+  margin_value: number;
+  min_margin?: number | null;
+  max_margin?: number | null;
+  active: boolean;
+  priority: number;
+}

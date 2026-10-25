@@ -12,6 +12,7 @@ import {
   CreditCard,
   Megaphone,
   BarChart3,
+  Percent,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Orders', href: '/admin/orders', icon: ClipboardList },
   { label: 'Services', href: '/admin/services', icon: Grid3X3 },
   { label: 'Providers', href: '/admin/providers', icon: Server },
+  { label: 'Margins', href: '/admin/margins', icon: Percent },
   { label: 'Payments', href: '/admin/payments', icon: CreditCard },
   { label: 'Announcements', href: '/admin/announcements', icon: Megaphone },
   { label: 'Support', href: '/admin/support', icon: LifeBuoy },

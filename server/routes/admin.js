@@ -10,10 +10,14 @@ import { AUTH_COOKIE_NAMES } from '../lib/authCookies.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import { validateRequest, validateQuery, validateParams, schemas } from '../lib/validation.js';
 import { invalidateServiceCaches } from './integrations.js';
-import { requireAuth, requireAdmin, requireCronSecret } from '../lib/authz.js';
+import { requireAdmin, requireCronSecret } from '../lib/authz.js';
 
 const router = express.Router();
-router.use(requireAuth);
+// Vercel Cron authenticates with a shared secret instead of a user session;
+// every other /api/admin route requires an authenticated administrator.
+router.use((req, res, next) =>
+  req.path.startsWith('/cron/') ? next() : requireAdmin(req, res, next)
+);
 
 const MAX_DECIMAL_10_2 = 99999999.99;
 const MAX_INT32 = 2147483647;

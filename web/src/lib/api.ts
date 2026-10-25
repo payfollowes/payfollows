@@ -4,6 +4,8 @@ import { getSessionUser, supabase, withSupabaseTimeout } from './supabase/client
 import type {
   Announcement,
   BalanceTransaction,
+  MarginRule,
+  MarginRuleInput,
   Order,
   OrderStatus,
   Payment,
@@ -719,6 +721,54 @@ export const adminAPI = {
       throw new Error(payload?.message || payload?.error?.message || 'Catalog sync failed');
     }
     return payload;
+  },
+
+  // Margin rules live behind the legacy admin bridge (service-role table).
+  // The bridge enforces an authenticated admin session on every call.
+  async listMarginRules(filters?: { providerId?: string; active?: boolean }): Promise<MarginRule[]> {
+    const query = new URLSearchParams();
+    if (filters?.providerId) query.set('provider_id', filters.providerId);
+    if (filters?.active !== undefined) query.set('active', String(filters.active));
+    const res = await apiFetch(`/api/admin/margin-rules?${query.toString()}`);
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || payload?.success === false) {
+      throw new Error(payload?.message || payload?.error?.message || 'Failed to load margin rules');
+    }
+    return Array.isArray(payload?.rules) ? payload.rules : [];
+  },
+
+  async createMarginRule(input: MarginRuleInput): Promise<MarginRule> {
+    const res = await apiFetch('/api/admin/margin-rules', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || payload?.success === false) {
+      throw new Error(payload?.message || payload?.error?.message || 'Failed to create margin rule');
+    }
+    return payload.rule;
+  },
+
+  async updateMarginRule(ruleId: string, input: MarginRuleInput): Promise<MarginRule> {
+    const res = await apiFetch(`/api/admin/margin-rules/${encodeURIComponent(ruleId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || payload?.success === false) {
+      throw new Error(payload?.message || payload?.error?.message || 'Failed to update margin rule');
+    }
+    return payload.rule;
+  },
+
+  async deleteMarginRule(ruleId: string): Promise<void> {
+    const res = await apiFetch(`/api/admin/margin-rules/${encodeURIComponent(ruleId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok && res.status !== 204) {
+      const payload = await res.json().catch(() => ({}));
+      throw new Error(payload?.message || payload?.error?.message || 'Failed to delete margin rule');
+    }
   },
 
   async getAllTickets(): Promise<SupportTicket[]> {
