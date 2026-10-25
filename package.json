@@ -14,7 +14,9 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run start:server\"",
     "create-admin": "node scripts/create_admin_user.js",
     "check-config": "node scripts/check_config.js",
-    "test": "vitest"
+    "test": "vitest",
+    "e2e:smoke": "node tests/e2e/smoke.mjs",
+    "e2e:app": "node tests/e2e/app.mjs"
   },
   "dependencies": {
     "@fontsource/space-grotesk": "^5.2.10",

@@ -311,7 +311,14 @@ export const servicesAPI = {
       });
       return category ? merged.filter((s) => s.category === category) : merged;
     } catch (error) {
-      console.error('[services] merge failed', error);
+      // Navigation teardown aborts in-flight fetches (AbortError / Failed to
+      // fetch). The regular catalog fallback still applies, so this is a
+      // handled degradation, not an app error — keep it out of error logs.
+      const isAbort =
+        (error as { name?: string })?.name === 'AbortError' ||
+        String((error as { message?: string })?.message || '').includes('Failed to fetch');
+      if (!isAbort) console.error('[services] merge failed', error);
+      else console.warn('[services] merge skipped (request aborted), using base catalog');
       return this.getServices(category);
     }
   },

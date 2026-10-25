@@ -4,7 +4,10 @@ import { dirname } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://payfollows.vercel.app';
+// E2E_API_TARGET is server-only (no NEXT_PUBLIC prefix) so local UI tests can
+// proxy relative /api calls to an offline stub without exposing it client-side.
+const apiBase =
+  process.env.E2E_API_TARGET || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://payfollows.vercel.app';
 
 const nextConfig = {
   reactStrictMode: true,
