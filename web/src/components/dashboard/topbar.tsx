@@ -9,8 +9,9 @@ import {
   Moon,
   RefreshCw,
   Search,
-  User as UserIcon,
   LayoutDashboard,
+  LifeBuoy,
+  Settings,
   Check,
   type LucideIcon,
 } from 'lucide-react';
@@ -231,8 +232,13 @@ export function DashboardTopbar({ variant }: TopbarProps) {
             >
               <LayoutDashboard /> Dashboard
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push(variant === 'admin' ? '/admin/settings' : '/dashboard/settings')}
+            >
+              <Settings /> Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(variant === 'admin' ? '/admin/support' : '/dashboard/support')}>
-              <UserIcon /> Support
+              <LifeBuoy /> Support
             </DropdownMenuItem>
 
             <DropdownMenuSub>

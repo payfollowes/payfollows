@@ -73,7 +73,7 @@ export function IconSidebar({ variant }: IconSidebarProps) {
     router.push('/login');
   };
 
-  const settingsHref = variant === 'admin' ? '/admin/settings' : '/dashboard/support';
+  const settingsHref = variant === 'admin' ? '/admin/settings' : '/dashboard/settings';
 
   return (
     <TooltipProvider delayDuration={150}>
