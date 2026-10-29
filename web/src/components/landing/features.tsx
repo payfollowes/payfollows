@@ -4,50 +4,56 @@ import { Reveal } from '@/components/shared/reveal';
 const DETAILS = [
   {
     icon: BadgeCheck,
-    title: 'Service details before submission',
-    description: 'Review the service description and quantity limits before you commit to an order.',
+    title: 'Service details up front',
+    description: 'Review descriptions and quantity limits before you decide what to order.',
+    tone: 'violet',
   },
   {
     icon: CircleDollarSign,
-    title: 'Charge shown before confirmation',
-    description: 'The order form calculates the charge from the selected service and quantity.',
+    title: 'Know the charge first',
+    description: 'The order form calculates the total from the current rate and quantity.',
+    tone: 'green',
   },
   {
     icon: ListChecks,
-    title: 'Order history tied to your account',
+    title: 'A clear order history',
     description: 'Follow status updates reported by the connected provider from your dashboard.',
+    tone: 'blue',
   },
   {
     icon: ShieldCheck,
-    title: 'No social password field',
-    description: 'Orders use the public link you provide. Never share your social account password.',
+    title: 'Your password stays yours',
+    description: 'Orders use the public link you provide. Never share a social account password.',
+    tone: 'pink',
   },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="landing-section relative scroll-mt-28 py-20 sm:py-24">
-      <div className="container grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-        <Reveal className="max-w-lg">
-          <h2 className="font-display text-3xl font-semibold leading-tight tracking-[-0.03em] text-white text-balance sm:text-4xl">
-            The details stay connected to the order.
+    <section id="features" className="landing-section landing-benefits-section relative scroll-mt-28 py-20 sm:py-24">
+      <div className="container">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="landing-eyebrow">Made for a clearer workflow</p>
+          <h2 className="mt-4 font-display text-3xl font-semibold leading-tight tracking-[-0.03em] text-white text-balance sm:text-4xl">
+            The important details, all in one place.
           </h2>
-          <p className="mt-5 text-base leading-7 text-foreground/70">
-            PayFollows brings service selection, wallet charges and provider-reported progress into one clear path.
+          <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-foreground/70">
+            PayFollows brings service selection, wallet charges and provider-reported progress into one straightforward flow.
           </p>
         </Reveal>
 
-        <div className="landing-detail-list">
-          {DETAILS.map(({ icon: Icon, title, description }, index) => (
-            <Reveal key={title} className="landing-detail-row" delayMs={index * 70}>
-              <span className="landing-detail-icon" aria-hidden="true">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-base font-semibold text-white">{title}</h3>
-                <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
-              </div>
-              <ArrowUpRight className="ml-auto hidden h-4 w-4 text-primary-300/70 sm:block" aria-hidden="true" />
+        <div className="landing-benefit-grid mt-12">
+          {DETAILS.map(({ icon: Icon, title, description, tone }, index) => (
+            <Reveal key={title} delayMs={index * 65}>
+              <article className={`landing-benefit-card is-${tone}`}>
+                <div className="landing-benefit-card-top">
+                  <span className="landing-detail-icon" aria-hidden="true"><Icon className="h-5 w-5" /></span>
+                  <span className="landing-benefit-number">0{index + 1}</span>
+                </div>
+                <h3 className="mt-7 text-lg font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+                <ArrowUpRight className="landing-benefit-arrow h-4 w-4" aria-hidden="true" />
+              </article>
             </Reveal>
           ))}
         </div>
