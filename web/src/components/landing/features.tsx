@@ -1,94 +1,74 @@
-'use client';
+import { ArrowUpRight, BadgeCheck, CircleDollarSign, ListChecks, ShieldCheck } from 'lucide-react';
+import { Reveal } from '@/components/shared/reveal';
 
-import { Zap, ShieldCheck, Clock, Headphones, Wallet, RefreshCw } from 'lucide-react';
-import { Reveal, StaggerGroup, StaggerItem } from '@/components/shared/reveal';
-
-const FEATURES = [
+const DETAILS = [
   {
-    icon: Zap,
-    title: 'Lightning Fast Delivery',
-    desc: 'Orders start within seconds. Most campaigns complete in minutes, not days — even at huge volumes.',
+    icon: BadgeCheck,
+    title: 'Service details before submission',
+    description: 'Review the service description and quantity limits before you commit to an order.',
   },
   {
-    icon: Wallet,
-    title: 'Cheapest Rates Online',
-    desc: 'Direct provider access with dynamic margins means you always pay the lowest price per 1000.',
+    icon: CircleDollarSign,
+    title: 'Charge shown before confirmation',
+    description: 'The order form calculates the charge from the selected service and quantity.',
+  },
+  {
+    icon: ListChecks,
+    title: 'Order history tied to your account',
+    description: 'Follow status updates reported by the connected provider from your dashboard.',
   },
   {
     icon: ShieldCheck,
-    title: 'Safe & Secure',
-    desc: 'Encrypted payments, RLS-protected data and no password requests. Your accounts stay completely safe.',
-  },
-  {
-    icon: RefreshCw,
-    title: 'Auto Refill Guarantee',
-    desc: 'Drops covered automatically. Every eligible service includes lifetime or 30-day refill protection.',
-  },
-  {
-    icon: Clock,
-    title: '24/7 Automated System',
-    desc: 'The panel never sleeps — order tracking, refills and syncs run around the clock without manual work.',
-  },
-  {
-    icon: Headphones,
-    title: 'Human Support',
-    desc: 'Real support agents answer tickets fast, plus a live chat widget for urgent questions.',
+    title: 'No social password field',
+    description: 'Orders use the public link you provide. Never share your social account password.',
   },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="relative scroll-mt-24 py-20 lg:py-24">
-      <div className="container">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Why PayFollows"
-            title="Why creators stick with us"
-            subtitle="We combine clarity, trust and high-performing delivery to produce results that actually matter."
-          />
+    <section id="features" className="landing-section relative scroll-mt-28 py-20 sm:py-24">
+      <div className="container grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+        <Reveal className="max-w-lg">
+          <h2 className="font-display text-3xl font-semibold leading-tight tracking-[-0.03em] text-white text-balance sm:text-4xl">
+            The details stay connected to the order.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-foreground/70">
+            PayFollows brings service selection, wallet charges and provider-reported progress into one clear path.
+          </p>
         </Reveal>
 
-        <StaggerGroup className="feature-grid mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature, index) => (
-            <StaggerItem key={feature.title} index={index} className="h-full">
-            <div
-              className="group relative h-full overflow-hidden rounded-3xl border border-[rgba(167,139,250,0.12)] bg-ink-850/85 p-7 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary-500/40 hover:shadow-card-hover"
-            >
-              <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-primary-600/25 blur-3xl transition-all duration-500 group-hover:bg-primary-500/35" />
-              <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary-400/50 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-              <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-gradient text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-110">
-                <feature.icon className="h-6 w-6" />
+        <div className="landing-detail-list">
+          {DETAILS.map(({ icon: Icon, title, description }, index) => (
+            <Reveal key={title} className="landing-detail-row" delayMs={index * 70}>
+              <span className="landing-detail-icon" aria-hidden="true">
+                <Icon className="h-5 w-5" />
               </span>
-              <h3 className="relative mt-5 font-display text-lg font-bold text-white">{feature.title}</h3>
-              <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
-            </div>
-            </StaggerItem>
+              <div>
+                <h3 className="text-base font-semibold text-white">{title}</h3>
+                <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
+              </div>
+              <ArrowUpRight className="ml-auto hidden h-4 w-4 text-primary-300/70 sm:block" aria-hidden="true" />
+            </Reveal>
           ))}
-        </StaggerGroup>
+        </div>
       </div>
     </section>
   );
 }
 
 export function SectionHeading({
-  eyebrow,
   title,
   subtitle,
 }: {
-  eyebrow: string;
   title: string;
   subtitle?: string;
 }) {
   return (
-    <div className="mx-auto max-w-2xl text-center">
-      <span className="inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-300">
-        {eyebrow}
-      </span>
-      <h2 className="mt-5 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl text-balance">
+    <div className="max-w-xl">
+      <h2 className="font-display text-3xl font-semibold leading-tight tracking-[-0.03em] text-white text-balance sm:text-4xl">
         {title}
       </h2>
-      {subtitle && <p className="mt-4 text-base leading-relaxed text-muted-foreground">{subtitle}</p>}
+      {subtitle && <p className="mt-4 text-base leading-7 text-foreground/70">{subtitle}</p>}
     </div>
   );
 }

@@ -2,24 +2,25 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import { Logo } from '@/components/shared/logo';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
   { label: 'Services', href: '/#services' },
-  { label: 'Why Us', href: '/#features' },
-  { label: 'Reviews', href: '/#reviews' },
+  { label: 'How it works', href: '/#how-it-works' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'FAQ', href: '/#faq' },
 ];
 
 export function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -27,65 +28,69 @@ export function LandingNavbar() {
 
   return (
     <motion.header
-      initial={{ y: -80, opacity: 0 }}
+      initial={reduceMotion ? false : { y: -18, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-0 z-50 px-4 pt-4"
     >
       <nav
+        aria-label="Main navigation"
         className={cn(
-          'container flex h-16 items-center justify-between rounded-full px-4 transition-all duration-300 sm:px-6',
-          scrolled
-            ? 'border border-[rgba(167,139,250,0.18)] bg-ink-900/85 shadow-card backdrop-blur-2xl'
-            : 'pf-card-inner backdrop-blur-xl'
+          'landing-nav container flex h-16 items-center justify-between rounded-2xl px-4 transition-all duration-300 sm:px-6',
+          scrolled ? 'is-scrolled' : ''
         )}
       >
         <Logo />
 
-        <div className="hidden items-center gap-7 md:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {LINKS.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-white"
+              className="text-sm font-medium text-foreground/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             >
               {link.label}
             </Link>
           ))}
         </div>
 
-        <div className="hidden items-center gap-2.5 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <Link
             href="/login"
-            className="rounded-full border border-white/12 px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:border-primary-500/50 hover:bg-white/[0.05]"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground/75 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
           >
-            Login
+            Sign in
           </Link>
           <Link
             href="/register"
-            className="group inline-flex items-center gap-1.5 rounded-full bg-primary-gradient px-5 py-2.5 text-sm font-bold text-white btn-glow transition-all hover:brightness-110 active:scale-[0.98]"
+            className="group inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Start Now
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            Create account
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </Link>
         </div>
 
         <button
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white md:hidden"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
+          type="button"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 text-white transition hover:border-primary-300/50 lg:hidden"
+          onClick={() => setOpen((value) => !value)}
+          aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={open}
+          aria-controls={open ? 'landing-mobile-menu' : undefined}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
         </button>
       </nav>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            id="landing-mobile-menu"
+            initial={reduceMotion ? false : { opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="container mt-2 rounded-3xl border border-[rgba(167,139,250,0.18)] bg-ink-900/95 p-4 backdrop-blur-2xl md:hidden"
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+            className="landing-mobile-menu container mt-2 p-3 lg:hidden"
           >
             <div className="flex flex-col gap-1">
               {LINKS.map((link) => (
@@ -93,23 +98,25 @@ export function LandingNavbar() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold text-muted-foreground hover:bg-white/5 hover:text-white"
+                  className="rounded-lg px-4 py-3 text-sm font-medium text-foreground/75 transition hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/[0.09] pt-3">
                 <Link
                   href="/login"
-                  className="flex-1 rounded-full border border-white/12 py-3 text-center text-sm font-bold"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg border border-white/15 py-3 text-center text-sm font-semibold text-white"
                 >
-                  Login
+                  Sign in
                 </Link>
                 <Link
                   href="/register"
-                  className="flex-1 rounded-full bg-primary-gradient py-3 text-center text-sm font-bold text-white"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg bg-primary py-3 text-center text-sm font-bold text-white"
                 >
-                  Start Now
+                  Create account
                 </Link>
               </div>
             </div>
