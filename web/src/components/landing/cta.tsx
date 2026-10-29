@@ -1,7 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, ArrowUpRight, Sparkles } from 'lucide-react';
 import { Reveal } from '@/components/shared/reveal';
-import { LandingMascot } from './mascot';
 
 export function CtaBanner() {
   return (
@@ -37,7 +37,14 @@ export function CtaBanner() {
           <div className="landing-cta-mascot-wrap" aria-hidden="true">
             <span className="landing-mascot-orbit landing-mascot-orbit-one" />
             <span className="landing-mascot-orbit landing-mascot-orbit-two" />
-            <LandingMascot />
+            <Image
+              className="landing-mascot"
+              src="/landing-mascot.png"
+              alt=""
+              width={360}
+              height={313}
+              draggable={false}
+            />
             <span className="landing-mascot-spark landing-mascot-spark-one"><Sparkles /></span>
             <span className="landing-mascot-spark landing-mascot-spark-two"><Sparkles /></span>
           </div>
