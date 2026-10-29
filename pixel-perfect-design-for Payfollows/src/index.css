@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Parkinsans", "Inter", system-ui, sans-serif;
+  --color-ink: #010002;
+  --color-brand: #be00df;
+  --color-brand-light: #f4b2ff;
+}
+
+html { scroll-behavior: smooth; }
+body { background: #010002; color: #fff; font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+
+.text-grad { background-image: linear-gradient(96.84deg, #F4B2FF 11.33%, #BE00DF 81.17%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+/* Glow button (matches live site texture button) */
+.btn-glow { position: relative; isolation: isolate; overflow: hidden; border-radius: 10px; background: #be00df; box-shadow: 0 10px 30px -10px rgba(190,0,223,.8); }
+.btn-glow::before { content: ""; position: absolute; inset: -13% -46% auto -46%; height: 244%; background: url("https://growfollows.com/_next/image?url=%2Fassets%2Fshared%2Fglow-button-texture.png&w=640&q=75") center/100% 100% no-repeat; opacity: .85; z-index: -1; transition: opacity .5s; }
+.btn-glow::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); transform: translateX(-100%); z-index: 1; pointer-events: none; }
+.btn-glow:hover::after { animation: shine .9s ease; }
+.btn-glow:hover { box-shadow: 0 14px 40px -8px rgba(190,0,223,1); }
+.btn-glow > * { position: relative; z-index: 2; }
+@keyframes shine { to { transform: translateX(100%); } }
+
+.btn-outline { border: 1px solid rgba(255,255,255,.25); border-radius: 10px; background: rgba(255,255,255,.03); transition: all .3s; }
+.btn-outline:hover { border-color: #be00df; background: rgba(190,0,223,.15); color: #f4b2ff; }
+
+.card { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)); border: 1px solid rgba(255,255,255,.1); }
+
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+
+@keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-12px) } }
+.float { animation: float 6s ease-in-out infinite; }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(190,0,223,.6) } 100% { box-shadow: 0 0 0 22px rgba(190,0,223,0) } }
+.pulse-ring { animation: pulse-ring 2s infinite; }
+@keyframes marquee { to { transform: translateX(-50%) } }
+.marquee { animation: marquee 40s linear infinite; }
+.marquee-rev { animation: marquee 40s linear infinite reverse; }
+.marquee-wrap:hover .marquee, .marquee-wrap:hover .marquee-rev { animation-play-state: paused; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Interactive payment network: circuitry stays decorative while every label is a real control. */
+.payment-section { position: relative; width: 100%; }
+.payment-diagram { position: relative; height: 440px; isolation: isolate; }
+.payment-facets { position: absolute; inset: 0 17% 0; z-index: -2; opacity: .42; background: repeating-linear-gradient(135deg, transparent 0 72px, rgba(126, 14, 140, .12) 73px 138px, transparent 139px 210px); mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 76%, transparent); }
+.payment-glow { position: absolute; z-index: -1; left: 50%; top: 41%; width: 400px; height: 300px; transform: translate(-50%, -50%); background: radial-gradient(ellipse, rgba(170, 17, 190, .31), rgba(104, 11, 116, .12) 42%, transparent 70%); filter: blur(14px); pointer-events: none; }
+.payment-wires { position: absolute; top: 16px; inset-inline: 0; height: 400px; width: 100%; pointer-events: none; }
+.payment-wires path { fill: none; stroke-width: 1.7; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px rgba(213, 32, 208, .5)); }
+.payment-wire-group { opacity: .7; transition: opacity .3s, filter .3s; }
+.payment-wire-group[data-active="true"] { opacity: 1; filter: drop-shadow(0 0 8px #b01cbb); }
+.payment-wires .payment-circuit { opacity: .45; stroke-width: 1.2; }
+.payment-vertical-wires path { stroke: #782177; opacity: .35; stroke-width: 1; }
+
+.payment-side { position: absolute; top: 107px; z-index: 2; display: grid; gap: 25px; width: 180px; }
+.payment-left { left: 4.5%; }
+.payment-right { right: 2%; }
+.payment-method { width: max-content; max-width: 100%; min-width: 135px; padding: 6px 9px; border: 1px solid transparent; border-radius: 9px; background: rgba(11, 4, 14, .2); color: #fff; cursor: pointer; transition: border-color .25s, background .25s, box-shadow .25s, transform .25s; }
+.payment-method:hover, .payment-method:focus-visible, .payment-method-active { border-color: rgba(199, 36, 207, .48); background: rgba(94, 16, 100, .3); box-shadow: 0 0 22px rgba(181, 20, 198, .17); transform: translateY(-2px); outline: none; }
+.payment-icon { display: grid; flex: 0 0 20px; width: 20px; height: 20px; place-items: center; border-radius: 6px; color: var(--method-color); background: color-mix(in srgb, var(--method-color) 17%, #110814); font-size: 13px; font-weight: 800; line-height: 1; }
+.payment-mastercard { position: relative; display: block; width: 16px; height: 10px; }
+.payment-mastercard::before, .payment-mastercard::after { position: absolute; top: 0; width: 10px; height: 10px; border-radius: 50%; content: ""; }
+.payment-mastercard::before { left: 0; background: #eb001b; }
+.payment-mastercard::after { right: 0; background: #f79e1b; opacity: .9; }
+.payment-name { display: block; font-size: 13px; line-height: 1.15; font-weight: 600; }
+.payment-type { display: block; margin-top: 4px; font-size: 10px; line-height: 1; color: #a99aad; }
+
+.payment-core-wrap { position: absolute; left: 50%; top: 185px; z-index: 3; transform: translate(-50%, -50%); }
+.payment-core { display: grid; width: 140px; height: 140px; padding: 16px; place-items: center; border: 1px solid rgba(222, 75, 229, .37); border-radius: 27px; background: linear-gradient(135deg, #3d1e46, #17101d 60%, #33203c); box-shadow: 0 0 0 7px rgba(89, 36, 98, .23), inset 0 2px 6px rgba(255, 255, 255, .18), 0 0 60px 12px rgba(176, 18, 195, .34); cursor: pointer; transition: transform .3s, box-shadow .3s; }
+.payment-core:hover, .payment-core:focus-visible { transform: scale(1.045); box-shadow: 0 0 0 8px rgba(126, 37, 137, .36), inset 0 2px 6px rgba(255, 255, 255, .22), 0 0 70px 18px rgba(176, 18, 195, .5); outline: none; }
+.payment-core-inner { display: grid; width: 75px; height: 75px; place-items: center; border: 1px solid #d639df; border-radius: 16px; background: linear-gradient(135deg, #a52bbd, #8b0aab); box-shadow: 0 0 20px rgba(224, 49, 240, .45), inset 0 1px 8px rgba(255, 255, 255, .21); }
+.payment-glyph { color: #fff; font-family: var(--font-heading); font-size: 46px; font-weight: 800; font-style: italic; line-height: 1; text-shadow: 0 0 12px rgba(255,255,255,.5); }
+
+.payment-bottom { position: absolute; left: 50%; bottom: 16px; z-index: 2; display: flex; gap: 12px; transform: translateX(-50%); }
+.payment-bottom .payment-method { min-width: 128px; padding: 11px 12px; border-color: rgba(126, 67, 132, .32); background: rgba(20, 9, 25, .48); }
+.payment-bottom .payment-method:hover, .payment-bottom .payment-method-active { border-color: rgba(217, 68, 226, .7); background: rgba(97, 20, 106, .34); }
+.payment-hint { margin: -2px 0 0; text-align: center; color: #9c8da0; font-size: 12px; }
+.payment-detail { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; max-width: 760px; margin: 0 auto; padding: 18px 20px; border: 1px solid rgba(210, 55, 220, .38); border-radius: 14px; background: rgba(38, 11, 44, .76); box-shadow: 0 12px 40px rgba(94, 17, 101, .18); animation: payment-detail-in .3s ease-out; }
+.payment-detail h3 { font-size: 14px; font-weight: 600; }
+.payment-detail p { margin-top: 5px; color: #bbadbf; font-size: 12px; line-height: 1.6; }
+.payment-detail-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; padding: 10px 13px; border-radius: 8px; background: #a916c2; color: #fff; font-size: 12px; font-weight: 600; transition: background .2s, transform .2s; }
+.payment-detail-link:hover { background: #c833dc; transform: translateY(-2px); }
+@keyframes payment-detail-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 700px) {
+  .payment-diagram { display: grid; height: auto; grid-template-columns: 1fr 1fr; gap: 18px; padding: 24px 4px 12px; }
+  .payment-facets { inset: 0; }
+  .payment-glow { top: 22%; width: 100%; }
+  .payment-wires { display: none; }
+  .payment-core-wrap { position: relative; grid-column: 1 / -1; grid-row: 1; left: auto; top: auto; justify-self: center; transform: none; margin-bottom: 22px; }
+  .payment-core { width: 112px; height: 112px; padding: 12px; border-radius: 22px; }
+  .payment-core-inner { width: 62px; height: 62px; }
+  .payment-glyph { font-size: 38px; }
+  .payment-side { position: relative; top: auto; left: auto; right: auto; width: 100%; gap: 9px; }
+  .payment-method { width: 100%; min-width: 0; padding: 9px; border-color: rgba(126, 67, 132, .24); background: rgba(20, 9, 25, .48); }
+  .payment-bottom { position: relative; grid-column: 1 / -1; left: auto; bottom: auto; transform: none; gap: 8px; margin-top: 4px; }
+  .payment-bottom .payment-method { min-width: 0; padding: 9px 6px; }
+  .payment-bottom .payment-method { gap: 5px; }
+  .payment-name { font-size: 12px; }
+  .payment-type { font-size: 9px; }
+  .payment-hint { margin-top: 4px; }
+  .payment-detail { flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .float, .pulse-ring, .marquee, .marquee-rev { animation: none; }
+  .payment-detail { animation: none; }
+}
