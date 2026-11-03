@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle, Droplets, Eye, ChevronDown, ChevronUp, Clock3 } from 'lucide-react';
+import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle, Droplets, Eye, ChevronDown, ChevronUp, Clock3, LifeBuoy } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -266,6 +266,17 @@ export default function OrdersPage() {
                             Details
                             {isExpanded ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
                           </Button>
+                          {!order.provider_order_id && (order.status === 'pending' || order.status === 'processing') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-amber-500/30 text-xs text-amber-200 hover:text-amber-100"
+                              aria-label={`Contact support about order ${order.id}`}
+                              onClick={() => window.location.assign(`/dashboard/support?orderId=${encodeURIComponent(order.id)}`)}
+                            >
+                              <LifeBuoy className="mr-1 h-3.5 w-3.5" /> Help
+                            </Button>
+                          )}
                           {order.provider_id && order.provider_order_id &&
                             (order.status === 'pending' || order.status === 'processing') && (
                               <Button

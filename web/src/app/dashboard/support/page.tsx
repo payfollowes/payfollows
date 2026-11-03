@@ -56,6 +56,16 @@ export default function SupportPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get('orderId')?.trim();
+    if (!orderId) return;
+    setSubject(`Order status check: ${orderId}`);
+    setMessage(
+      `Please check order ${orderId}. It is showing as pending while waiting for provider confirmation. Please confirm whether it was accepted and advise if any further action is needed.`
+    );
+    setOpen(true);
+  }, []);
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) return toast.error('Please fill subject and message');
