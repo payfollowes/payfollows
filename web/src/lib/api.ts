@@ -25,9 +25,9 @@ import type {
 } from './types';
 
 /**
- * Legacy Vite panel owns the serverless API (services cache, provider bridge,
- * payments, admin endpoints). In production the new app calls it cross-origin;
- * in dev Next rewrites proxy relative /api paths to it.
+ * Legacy Vite panel owns the serverless API (provider bridge, payments, and
+ * admin endpoints). The customer service catalog reads Supabase directly so
+ * its RLS visibility policy and display order apply immediately.
  */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -267,22 +267,36 @@ const SERVICE_CATALOG_TTL = 15_000;
 let serviceCatalogCache: Service[] | null = null;
 let serviceCatalogCacheExpires = 0;
 let serviceCatalogRequest: Promise<Service[]> | null = null;
+let serviceCatalogGeneration = 0;
 
 async function loadServiceCatalog(): Promise<Service[]> {
   if (serviceCatalogCache && serviceCatalogCacheExpires > Date.now()) return serviceCatalogCache;
 
   if (!serviceCatalogRequest) {
+    const generation = serviceCatalogGeneration;
     const request = (async () => {
-      const res = await apiFetch('/api/services');
-      if (!res.ok) throw new Error(`Failed to fetch services: ${res.status}`);
-      const payload = await res.json().catch(() => ({}));
-      return (Array.isArray(payload?.services) ? payload.services : []) as Service[];
+      const { data, error } = await runQuery(
+        supabase
+          .from('services')
+          .select('*')
+          .eq('status', 'active')
+          .eq('is_visible_to_users', true)
+          .gt('rate_per_1000', 0)
+          .order('display_order', { ascending: true })
+          .order('category', { ascending: true })
+          .order('name', { ascending: true }),
+        'public services catalog'
+      );
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []) as Service[];
     })();
     serviceCatalogRequest = request;
     request.then(
       (rows) => {
-        serviceCatalogCache = rows;
-        serviceCatalogCacheExpires = Date.now() + SERVICE_CATALOG_TTL;
+        if (generation === serviceCatalogGeneration) {
+          serviceCatalogCache = rows;
+          serviceCatalogCacheExpires = Date.now() + SERVICE_CATALOG_TTL;
+        }
         if (serviceCatalogRequest === request) serviceCatalogRequest = null;
       },
       () => {
@@ -302,16 +316,28 @@ export const servicesAPI = {
 
   /** Clear the short-lived storefront cache after a service catalog mutation. */
   clearCatalogCache() {
+    serviceCatalogGeneration += 1;
     serviceCatalogCache = null;
     serviceCatalogCacheExpires = 0;
+    serviceCatalogRequest = null;
   },
 
 
   async getService(id: string): Promise<Service> {
-    const res = await apiFetch(`/api/services/${encodeURIComponent(id)}`);
-    if (!res.ok) throw new Error(`Failed to fetch service: ${res.status}`);
-    const payload = await res.json().catch(() => ({}));
-    return payload.service as Service;
+    const { data, error } = await runQuery(
+      supabase
+        .from('services')
+        .select('*')
+        .eq('id', id)
+        .eq('status', 'active')
+        .eq('is_visible_to_users', true)
+        .gt('rate_per_1000', 0)
+        .maybeSingle(),
+      'public service detail'
+    );
+    if (error) throw error;
+    if (!data) throw new Error('Service not found');
+    return data as Service;
   },
 
   async getMergedServices(category?: string): Promise<Service[]> {
@@ -720,15 +746,6 @@ export const adminAPI = {
       'delete service'
     );
     if (error) throw error;
-  },
-
-  async invalidateServiceCatalogCache(): Promise<boolean> {
-    try {
-      const response = await apiFetch('/api/admin/services/cache/invalidate', { method: 'POST' });
-      return response.ok;
-    } catch {
-      return false;
-    }
   },
 
   async getAllOrders(): Promise<Order[]> {

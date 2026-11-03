@@ -74,12 +74,8 @@ export default function AdminServicesPage() {
     void load();
   }, []);
 
-  const refreshPublicCatalog = async () => {
+  const refreshPublicCatalog = () => {
     servicesAPI.clearCatalogCache();
-    const refreshed = await adminAPI.invalidateServiceCatalogCache();
-    if (!refreshed) {
-      toast.info('Saved. Customer catalog refresh may take up to 10 minutes.');
-    }
   };
 
   const saveStorefrontSetting = async (
@@ -98,7 +94,7 @@ export default function AdminServicesPage() {
 
     try {
       await adminAPI.updateService(service.id, updates);
-      await refreshPublicCatalog();
+      refreshPublicCatalog();
       toast.success(updates.is_visible_to_users !== undefined
         ? (updates.is_visible_to_users ? 'Service shown to customers' : 'Service hidden from customers')
         : 'Display order updated');
@@ -162,7 +158,7 @@ export default function AdminServicesPage() {
     try {
       if (editing) await adminAPI.updateService(editing.id, payload);
       else await adminAPI.createService(payload as Omit<Service, 'id'>);
-      await refreshPublicCatalog();
+      refreshPublicCatalog();
       toast.success(editing ? 'Service updated' : 'Service created');
       setDialogOpen(false);
       void load();
@@ -177,7 +173,7 @@ export default function AdminServicesPage() {
     if (!window.confirm(`Delete service "${s.name}"?`)) return;
     try {
       await adminAPI.deleteService(s.id);
-      await refreshPublicCatalog();
+      refreshPublicCatalog();
       toast.success('Service deleted');
       void load();
     } catch (err) {
