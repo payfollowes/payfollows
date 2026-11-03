@@ -203,18 +203,18 @@ function NewOrderInner() {
       </Card>
 
       <Tabs defaultValue="order">
-        <TabsList>
-          <TabsTrigger value="order">
-            <ShoppingCart className="h-4 w-4" /> New Order
+        <TabsList className="grid w-full min-w-0 grid-cols-2 gap-1.5 sm:inline-flex sm:w-auto sm:grid-cols-none sm:gap-1">
+          <TabsTrigger value="order" className="w-full min-w-0 justify-start px-2.5 text-xs sm:w-auto sm:justify-center sm:px-4 sm:text-sm">
+            <ShoppingCart className="h-4 w-4 shrink-0" /> New Order
           </TabsTrigger>
-          <TabsTrigger value="favorites">
-            <Heart className="h-4 w-4" /> Favorites
+          <TabsTrigger value="favorites" className="w-full min-w-0 justify-start px-2.5 text-xs sm:w-auto sm:justify-center sm:px-4 sm:text-sm">
+            <Heart className="h-4 w-4 shrink-0" /> Favorites
           </TabsTrigger>
-          <TabsTrigger value="details">
-            <Info className="h-4 w-4" /> Service Details
+          <TabsTrigger value="details" className="w-full min-w-0 justify-start px-2.5 text-xs sm:w-auto sm:justify-center sm:px-4 sm:text-sm">
+            <Info className="h-4 w-4 shrink-0" /> Service Details
           </TabsTrigger>
-          <TabsTrigger value="updates">
-            <RefreshCw className="h-4 w-4" /> Last Updates
+          <TabsTrigger value="updates" className="w-full min-w-0 justify-start px-2.5 text-xs sm:w-auto sm:justify-center sm:px-4 sm:text-sm">
+            <RefreshCw className="h-4 w-4 shrink-0" /> Last Updates
           </TabsTrigger>
         </TabsList>
 

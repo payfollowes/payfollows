@@ -228,7 +228,7 @@ export function DashboardTopbar({ variant }: TopbarProps) {
 
         {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.04] py-1.5 pl-1.5 pr-2.5 outline-none transition-all hover:bg-white/[0.08] sm:pr-3.5">
+          <DropdownMenuTrigger className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.04] p-0 outline-none transition-all hover:bg-white/[0.08] md:h-auto md:w-auto md:justify-start md:gap-2.5 md:rounded-2xl md:py-1.5 md:pl-1.5 md:pr-3.5">
             <Avatar className="h-9 w-9 ring-2 ring-primary-500/40">
               <AvatarFallback className="bg-primary-gradient text-xs text-white">{initial}</AvatarFallback>
             </Avatar>
