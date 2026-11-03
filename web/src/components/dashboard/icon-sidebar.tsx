@@ -163,48 +163,46 @@ export function IconSidebar({ variant }: IconSidebarProps) {
         </div>
       </aside>
 
-      {/* Mobile user nav: compact white dock with a raised, central Add Order action. */}
+      {/* Mobile user nav: dark glass dock with a raised, branded Add Order action. */}
       {variant === 'user' ? (
-        <nav aria-label="Mobile navigation" className="mobile-action-nav fixed inset-x-3 z-40 grid h-[68px] grid-cols-5 items-center rounded-[28px] border border-slate-200/80 bg-white/95 px-2 shadow-[0_12px_36px_rgba(18,26,50,0.16)] backdrop-blur-xl lg:hidden">
+        <nav aria-label="Mobile navigation" className="mobile-action-nav fixed inset-x-3 z-40 grid h-[68px] grid-cols-5 items-center rounded-[26px] border border-[rgba(167,139,250,0.16)] bg-ink-900/95 px-2 shadow-card backdrop-blur-2xl lg:hidden">
           <Link
             href="/dashboard"
             aria-label="Dashboard"
             aria-current={pathname === '/dashboard' ? 'page' : undefined}
-            className={cn('flex h-12 items-center justify-center rounded-full transition-colors', pathname === '/dashboard' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-900')}
+            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', pathname === '/dashboard' ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
           >
-            <Globe2 className="h-[22px] w-[22px]" strokeWidth={1.8} />
+            <Globe2 className="h-[21px] w-[21px]" strokeWidth={1.8} />
           </Link>
           <Link
             href="/dashboard/add-funds"
             aria-label="Add funds"
             aria-current={isActive(pathname, USER_NAV[4], 'user') ? 'page' : undefined}
-            className={cn('flex h-12 items-center justify-center rounded-full transition-colors', isActive(pathname, USER_NAV[4], 'user') ? 'text-primary-600' : 'text-slate-500 hover:text-slate-900')}
+            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', isActive(pathname, USER_NAV[4], 'user') ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
           >
-            <Wallet className="h-[22px] w-[22px]" strokeWidth={1.8} />
+            <Wallet className="h-[21px] w-[21px]" strokeWidth={1.8} />
+          </Link>
+          <span aria-hidden="true" className="h-11" />
+          <NotificationBell className="mx-auto !h-11 !w-11 !rounded-2xl !border-0 !bg-transparent !text-muted-foreground hover:!bg-white/[0.06] hover:!text-white" />
+          <Link
+            href={settingsHref}
+            aria-label="Profile and settings"
+            aria-current={pathname === settingsHref ? 'page' : undefined}
+            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', pathname === settingsHref ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
+          >
+            <UserRound className="h-[21px] w-[21px]" strokeWidth={1.8} />
           </Link>
           <Link
             href="/dashboard/new-order"
             aria-label="Add order"
             title="Add order"
             aria-current={isActive(pathname, USER_NAV[1], 'user') ? 'page' : undefined}
-            className="absolute left-1/2 top-[-20px] flex h-[88px] w-[82px] -translate-x-1/2 flex-col items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2"
+            className="absolute left-1/2 top-[-17px] flex h-[82px] w-[80px] -translate-x-1/2 flex-col items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
           >
-            <span
-              className="flex h-[64px] w-[64px] items-center justify-center bg-gradient-to-br from-primary-500 via-violet-500 to-sky-400 text-white drop-shadow-[0_10px_16px_rgba(124,58,237,0.32)] transition-transform active:scale-95"
-              style={{ clipPath: 'polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%)' }}
-            >
-              <Plus className="h-8 w-8" strokeWidth={1.8} />
+            <span className="flex h-[58px] w-[58px] items-center justify-center rounded-[20px] border border-white/15 bg-primary-gradient text-white shadow-glow-brand ring-4 ring-ink-900 transition-transform active:scale-95">
+              <Plus className="h-7 w-7" strokeWidth={1.9} />
             </span>
-            <span className="-mt-0.5 text-[9px] font-semibold leading-none text-slate-600">Add order</span>
-          </Link>
-          <NotificationBell className="mx-auto !h-11 !w-11 !rounded-full !border-0 !bg-transparent !text-slate-600 hover:!bg-slate-100 hover:!text-primary-600" />
-          <Link
-            href={settingsHref}
-            aria-label="Profile and settings"
-            aria-current={pathname === settingsHref ? 'page' : undefined}
-            className={cn('flex h-12 items-center justify-center rounded-full transition-colors', pathname === settingsHref ? 'text-primary-600' : 'text-slate-500 hover:text-slate-900')}
-          >
-            <UserRound className="h-[22px] w-[22px]" strokeWidth={1.8} />
+            <span className="mt-1 text-[10px] font-semibold leading-none text-muted-foreground">Add order</span>
           </Link>
         </nav>
       ) : (
