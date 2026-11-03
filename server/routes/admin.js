@@ -11,6 +11,7 @@ import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse
 import { validateRequest, validateQuery, validateParams, schemas } from '../lib/validation.js';
 import { invalidateServiceCaches } from './integrations.js';
 import { requireAdmin, requireCronSecret } from '../lib/authz.js';
+import { readPaymentMethodSettings, normalizeManualPaymentMethod } from '../lib/paymentMethods.js';
 
 const router = express.Router();
 // Vercel Cron authenticates with a shared secret instead of a user session;
@@ -18,13 +19,6 @@ const router = express.Router();
 router.use((req, res, next) =>
   req.path.startsWith('/cron/') ? next() : requireAdmin(req, res, next)
 );
-
-// The web admin writes service rows directly through Supabase, so explicitly
-// invalidate the server-side catalog snapshots after visibility/order edits.
-router.post('/services/cache/invalidate', (_req, res) => {
-  invalidateServiceCaches();
-  return res.json({ success: true });
-});
 
 const MAX_DECIMAL_10_2 = 99999999.99;
 const MAX_INT32 = 2147483647;
@@ -1798,6 +1792,93 @@ router.post('/provider-services/filter-categories', async (req, res) => {
     return res.status(serverError.status).json({ success: false, message: serverError.message });
   }
 });
+
+// Payment method management stores only customer-facing transfer instructions.
+// Gateway secrets stay in server environment variables and are never returned to clients.
+router.get('/payment-methods', asyncHandler(async (_req, res) => {
+  if (!supabaseAdminConfigured || !supabaseAdmin) {
+    return res.status(503).json(errorResponse('PAYMENTS_UNAVAILABLE', 'Payment settings are not configured.'));
+  }
+  const { methods, settings } = await readPaymentMethodSettings(supabaseAdmin);
+  const fastpayConfigured = Boolean(
+    process.env.FASTPAY_API_KEY && process.env.FASTPAY_MERCHANT_ID &&
+    process.env.FASTPAY_WEBHOOK_SECRET && process.env.FASTPAY_WEBHOOK_URL
+  );
+  return res.json(successResponse({ methods, gateways: [{ id: 'fastpay', name: 'FastPay', configured: fastpayConfigured, enabled: fastpayConfigured && settings.fastpayEnabled !== false }] }));
+}));
+
+router.put('/payment-methods', asyncHandler(async (req, res) => {
+  if (!supabaseAdminConfigured || !supabaseAdmin) {
+    return res.status(503).json(errorResponse('PAYMENTS_UNAVAILABLE', 'Payment settings are not configured.'));
+  }
+  const input = req.body?.methods;
+  const fastpayEnabled = req.body?.fastpayEnabled !== false;
+  if (!Array.isArray(input) || input.length > 30) {
+    return res.status(400).json(errorResponse('INVALID_PAYMENT_METHODS', 'Provide a list of up to 30 manual payment methods.'));
+  }
+  const methods = input.map(normalizeManualPaymentMethod);
+  const reservedIds = new Set(['fastpay', 'payfast', 'credit_card', 'easypaisa', 'paypal', 'crypto']);
+  if (methods.some((method) => !method || reservedIds.has(method.id)) || new Set(methods.map((method) => method.id)).size !== methods.length) {
+    return res.status(400).json(errorResponse('INVALID_PAYMENT_METHODS', 'Each method needs a unique valid ID, name, account details, instructions, and a minimum amount of at least $5.'));
+  }
+
+  const { settings } = await readPaymentMethodSettings(supabaseAdmin);
+  const { data, error } = await supabaseAdmin
+    .from('app_settings')
+    .upsert({
+      id: 'default',
+      config: { ...settings, paymentMethods: methods, fastpayEnabled },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' })
+    .select('config')
+    .single();
+  if (error) {
+    const missingTable = String(error.code || '') === '42P01' || String(error.message || '').toLowerCase().includes('app_settings');
+    return res.status(missingTable ? 400 : 500).json(errorResponse(
+      missingTable ? 'SETTINGS_TABLE_MISSING' : 'PAYMENT_METHODS_SAVE_FAILED',
+      missingTable ? 'Settings table is missing. Create public.app_settings before saving.' : 'Could not save payment methods.'
+    ));
+  }
+  return res.json(successResponse({ methods: data?.config?.paymentMethods || [] }));
+}));
+
+router.get('/manual-deposits', asyncHandler(async (_req, res) => {
+  if (!supabaseAdminConfigured || !supabaseAdmin) {
+    return res.status(503).json(errorResponse('PAYMENTS_UNAVAILABLE', 'Payment service is not configured.'));
+  }
+  const { data, error } = await supabaseAdmin
+    .from('payments')
+    .select('id, user_id, amount, fee, total, payment_method, payment_provider, transaction_id, status, metadata, created_at, user:user_profiles(username,email)')
+    .eq('payment_provider', 'manual')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return res.json(successResponse({ deposits: data || [] }));
+}));
+
+router.post('/manual-deposits/:paymentId/review', asyncHandler(async (req, res) => {
+  if (!supabaseAdminConfigured || !supabaseAdmin) {
+    return res.status(503).json(errorResponse('PAYMENTS_UNAVAILABLE', 'Payment service is not configured.'));
+  }
+  const paymentId = String(req.params.paymentId || '');
+  const body = req.body || {};
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(paymentId) || !['approve', 'reject'].includes(body.action)) {
+    return res.status(400).json(errorResponse('INVALID_REVIEW', 'Invalid payment ID or review action.'));
+  }
+  const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 240) : '';
+  const { data, error } = await supabaseAdmin.rpc('review_manual_deposit', {
+    p_payment_id: paymentId,
+    p_admin_id: req.user.id,
+    p_action: body.action,
+    p_reason: reason || null,
+  });
+  if (error) {
+    const message = String(error.message || 'Could not review deposit.');
+    const status = /Only pending|Only manual|not found|Invalid manual|transaction reference/i.test(message) ? 409 : 500;
+    return res.status(status).json(errorResponse('MANUAL_DEPOSIT_REVIEW_FAILED', message));
+  }
+  return res.json(successResponse({ payment: data }));
+}));
 
 router.get('/settings', async (req, res) => {
   try {

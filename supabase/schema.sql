@@ -229,10 +229,7 @@ CREATE POLICY "Users can view their own profile"
   ON public.user_profiles FOR SELECT
   USING (auth.uid() = id);
 
-CREATE POLICY "Users can update their own profile"
-  ON public.user_profiles FOR UPDATE
-  USING (auth.uid() = id);
-
+-- User profile writes are performed through server-controlled RPCs only.
 -- Helper function to check if user is admin (avoids infinite recursion in RLS)
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN
@@ -477,10 +474,6 @@ CREATE POLICY "Users can create their own tickets"
   ON public.support_tickets FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own tickets"
-  ON public.support_tickets FOR UPDATE
-  USING (auth.uid() = user_id);
-
 CREATE POLICY "Admins can view all tickets"
   ON public.support_tickets FOR SELECT
   USING (public.is_admin(auth.uid()));
@@ -568,11 +561,10 @@ CREATE POLICY "Users can view their own chat channels"
 
 CREATE POLICY "Users can create their own chat channels"
   ON public.chat_channels FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own chat channels"
-  ON public.chat_channels FOR UPDATE
-  USING (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id AND status = 'open'
+    AND last_sender_role IS NULL AND last_message IS NULL
+  );
 
 CREATE POLICY "Admins can view all chat channels"
   ON public.chat_channels FOR SELECT
@@ -597,7 +589,9 @@ CREATE POLICY "Users can view messages in their channels"
 CREATE POLICY "Users can send messages in their channels"
   ON public.chat_messages FOR INSERT
   WITH CHECK (
-    EXISTS (
+    sender_id = auth.uid()
+    AND sender_role = 'user'
+    AND EXISTS (
       SELECT 1
       FROM public.chat_channels c
       WHERE c.id = chat_messages.channel_id
@@ -611,7 +605,7 @@ CREATE POLICY "Admins can view all chat messages"
 
 CREATE POLICY "Admins can send chat messages"
   ON public.chat_messages FOR INSERT
-  WITH CHECK (public.is_admin(auth.uid()));
+  WITH CHECK (public.is_admin(auth.uid()) AND sender_id = auth.uid() AND sender_role = 'admin');
 
 -- Trigger to update channel metadata on new messages
 CREATE OR REPLACE FUNCTION public.update_chat_channel_on_message()

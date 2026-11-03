@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { servicesAPI, authAPI, paymentsAPI } from "../../lib/api";
 import useOrderManagement from "../../lib/useOrderManagement";
 import { withTimeout } from "../../lib/withTimeout";
@@ -632,38 +632,6 @@ const NewOrderPage: React.FC = () => {
   }, []);
 
   /**
-   * Handle payment initiation - called after order is created
-   */
-  const handlePaymentRequest = async (amount: number): Promise<void> => {
-    if (amount === 0) {
-      console.log("[NewOrder] No payment needed (free order)");
-      return;
-    }
-
-    setPaymentInProgress(true);
-    try {
-      console.log("[NewOrder] Initiating payment for:", amount);
-
-      // Create payment record in database
-      const payment = await paymentsAPI.createPayment(amount, "fastpay");
-
-      if (payment.fastpay_order_id) {
-        // TODO: Redirect to FastPay payment page
-        console.log(
-          "[NewOrder] Payment initiated, fastpay_order_id:",
-          payment.fastpay_order_id,
-        );
-        // window.location.href = `https://fastpay.com/checkout?order_id=${payment.fastpay_order_id}`;
-      }
-    } catch (err) {
-      console.error("[NewOrder] Payment initiation failed:", err);
-      throw err; // Re-throw so the hook can handle it
-    } finally {
-      setPaymentInProgress(false);
-    }
-  };
-
-  /**
    * Handle order form submission
    */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -682,13 +650,12 @@ const NewOrderPage: React.FC = () => {
       deliveryTime: actualDeliveryTime,
     };
 
-    // Create order with payment callback
-    const result = await createOrder(
-      selectedService,
-      orderData,
-      profile,
-      handlePaymentRequest,
-    );
+    const result = await createOrder(selectedService, orderData, profile);
+
+    if (result.status === 'failed') {
+      const updatedProfile = await authAPI.getUserProfile();
+      setProfile(updatedProfile);
+    }
 
     if (result.status === "processing" || result.status === "completed") {
       // Clear form on success
@@ -717,7 +684,7 @@ const NewOrderPage: React.FC = () => {
       deliveryTime: actualDeliveryTime,
     };
 
-    await retryOrder(selectedService, orderData, profile, handlePaymentRequest);
+    await retryOrder(selectedService, orderData, profile);
   };
 
   if (loadingServices) {

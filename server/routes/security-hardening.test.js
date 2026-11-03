@@ -86,6 +86,8 @@ describe('security hardening', () => {
   it('does not apply duplicate FastPay credits more than once', async () => {
     const payload = {
       id: 'txn-123',
+      event_id: 'evt-123',
+      payment_id: 'pay-1',
       order_id: 'ord-101',
       transaction_id: 'txn-123',
       status: 'completed',
@@ -98,7 +100,7 @@ describe('security hardening', () => {
     const signature = crypto.createHmac('sha256', 'top-secret').update(rawBody).digest('hex');
     process.env.FASTPAY_WEBHOOK_SECRET = 'top-secret';
 
-    const paymentRecord = { id: 'pay-1', user_id: 'user-1', amount: 125, status: 'pending', metadata: {}, transaction_id: 'txn-123', fastpay_order_id: 'ord-101' };
+    const paymentRecord = { id: 'pay-1', user_id: 'user-1', amount: 100, fee: 25, total: 125, payment_method: 'fastpay', payment_provider: 'fastpay', status: 'pending', metadata: {}, transaction_id: 'txn-123', fastpay_order_id: 'ord-101' };
 
     const updatePayment = vi.fn(() => ({
       eq: vi.fn(() => ({

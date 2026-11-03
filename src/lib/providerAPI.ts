@@ -1,182 +1,55 @@
 /**
- * Provider API Bridge Client
- * 
- * React should ONLY call our backend endpoints, never DaoSMM directly
- * Our backend acts as a secure proxy to DaoSMM API
+ * Authenticated provider bridge client. User order actions refer only to the
+ * caller's local order ID; the server derives upstream identifiers from the
+ * owned database row.
  */
+async function requestJson(url: string, init?: RequestInit) {
+  const response = await fetch(url, { credentials: 'include', ...init });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || payload?.error || payload?.message || `Request failed (${response.status})`);
+  }
+  return payload;
+}
 
 export const providerAPI = {
-  /**
-   * Get services from provider
-   * @param {string} providerId - Provider UUID
-   * @returns {Promise<array>} Array of services
-   */
   async getServices(providerId: string) {
-    try {
-      const response = await fetch(`/api/provider/services?provider_id=${providerId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch services: ${response.statusText}`);
-      }
-      const data = await response.json();
-      return data.services || [];
-    } catch (error) {
-      console.error('[Provider API] Get services error:', error);
-      throw error;
-    }
+    const data = await requestJson(`/api/provider/services?provider_id=${encodeURIComponent(providerId)}`);
+    return data.services || [];
   },
 
-  /**
-   * Create new order with provider
-   * @param {string} providerId - Provider UUID
-   * @param {object} order - Order details { service, link, quantity, runs?, interval? }
-   * @returns {Promise<object>} Order response with order ID
-   */
-  async addOrder(providerId: string, order: {
-    service: number;
-    link: string;
-    quantity: number;
-    runs?: number;
-    interval?: number;
-  }) {
-    try {
-      const response = await fetch('/api/provider/add-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider_id: providerId,
-          ...order,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create order');
-      }
-
-      const data = await response.json();
-      console.log('[Provider API] Order created:', data.order);
-      return data;
-    } catch (error) {
-      console.error('[Provider API] Add order error:', error);
-      throw error;
-    }
+  async addOrder(localOrderId: string) {
+    return requestJson('/api/provider/add-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ local_order_id: localOrderId }),
+    });
   },
 
-  /**
-   * Get order status from provider
-   * @param {string} providerId - Provider UUID
-   * @param {string|number|array} orders - Single order ID or comma-separated IDs
-   * @returns {Promise<object>} Order status data
-   */
-  async getOrderStatus(providerId: string, orders: string | number | number[]) {
-    try {
-      const orderString = Array.isArray(orders) ? orders.join(',') : String(orders);
-      
-      const response = await fetch(
-        `/api/provider/order-status?provider_id=${providerId}&orders=${encodeURIComponent(orderString)}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch order status: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.status;
-    } catch (error) {
-      console.error('[Provider API] Get order status error:', error);
-      throw error;
-    }
+  async getOrderStatus(localOrderId: string) {
+    const data = await requestJson(`/api/provider/order-status?local_order_id=${encodeURIComponent(localOrderId)}`);
+    return data.status;
   },
 
-  /**
-   * Get provider account balance
-   * @param {string} providerId - Provider UUID
-   * @returns {Promise<object>} Balance and currency
-   */
   async getBalance(providerId: string) {
-    try {
-      const response = await fetch(`/api/provider/balance?provider_id=${providerId}`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch balance');
-      }
-
-      const data = await response.json();
-      return {
-        balance: data.balance,
-        currency: data.currency,
-      };
-    } catch (error) {
-      console.error('[Provider API] Get balance error:', error);
-      throw error;
-    }
+    const data = await requestJson(`/api/provider/balance?provider_id=${encodeURIComponent(providerId)}`);
+    return { balance: data.balance, currency: data.currency };
   },
 
-  /**
-   * Create refill for order(s)
-   * @param {string} providerId - Provider UUID
-   * @param {string|number|array} orders - Single order ID or comma-separated IDs
-   * @returns {Promise<object>} Refill response
-   */
-  async createRefill(providerId: string, orders: string | number | number[]) {
-    try {
-      const orderString = Array.isArray(orders) ? orders.join(',') : String(orders);
-
-      const response = await fetch('/api/provider/refill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider_id: providerId,
-          orders: orderString,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create refill');
-      }
-
-      const data = await response.json();
-      console.log('[Provider API] Refill created:', data.refill);
-      return data;
-    } catch (error) {
-      console.error('[Provider API] Create refill error:', error);
-      throw error;
-    }
+  async createRefill(localOrderId: string) {
+    return requestJson('/api/provider/refill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ local_order_id: localOrderId }),
+    });
   },
 
-  /**
-   * Cancel order(s)
-   * @param {string} providerId - Provider UUID
-   * @param {string|number|array} orders - Single order ID or comma-separated IDs
-   * @returns {Promise<object>} Cancel response
-   */
-  async cancelOrder(providerId: string, orders: string | number | number[]) {
-    try {
-      const orderString = Array.isArray(orders) ? orders.join(',') : String(orders);
-
-      const response = await fetch('/api/provider/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider_id: providerId,
-          orders: orderString,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to cancel order');
-      }
-
-      const data = await response.json();
-      console.log('[Provider API] Order cancelled:', data.cancel);
-      return data;
-    } catch (error) {
-      console.error('[Provider API] Cancel order error:', error);
-      throw error;
-    }
+  async cancelOrder(localOrderId: string) {
+    return requestJson('/api/provider/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ local_order_id: localOrderId }),
+    });
   },
 };
 

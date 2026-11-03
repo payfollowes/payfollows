@@ -26,9 +26,10 @@ const corsOptions = {
       return;
     }
 
-    const isAllowed = allowedOrigins.length === 0
-      ? origin === 'http://localhost:3000' || origin === 'http://localhost:5173' || origin.endsWith('.vercel.app')
-      : allowedOrigins.includes(origin);
+    const isLocalDevOrigin = origin === 'http://localhost:3000' || origin === 'http://localhost:5173';
+    const isAllowed = allowedOrigins.length > 0
+      ? allowedOrigins.includes(origin)
+      : process.env.NODE_ENV !== 'production' && isLocalDevOrigin;
 
     if (isAllowed) {
       callback(null, true);

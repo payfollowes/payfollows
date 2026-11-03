@@ -495,80 +495,26 @@ export const ordersAPI = {
     link: string,
     quantity: number,
     deliveryTime: number = 24,
-    providerId?: string,
-    providerOrderId?: string,
-    initialStatus: Order['status'] = 'pending',
-    chargeOverride?: number
+    _providerId?: string,
+    _providerOrderId?: string,
+    _initialStatus: Order['status'] = 'pending',
+    _chargeOverride?: number
   ) {
-    const user = await getAuthenticatedUser();
-    let charge = Number.isFinite(chargeOverride) ? Number(chargeOverride) : NaN;
-
-    if (!Number.isFinite(charge)) {
-      const service = await servicesAPI.getService(serviceId);
-      let ratePer1000 = service.rate_per_1000;
-      try {
-        const providerServices = await getProviderServicesSnapshot();
-        const match = providerServices.find(
-          (row: any) =>
-            row?.status !== 'inactive' &&
-            String(row?.service_id || '').trim() === String(serviceId).trim()
-        );
-        if (match?.our_rate !== undefined && match?.our_rate !== null) {
-          ratePer1000 = Number(match.our_rate);
-        }
-      } catch {
-        // fallback to service rate if provider snapshot fails
-      }
-      charge = (ratePer1000 / 1000) * quantity;
-    }
-
-    // Zero-priced (unpriced) services must never be orderable for free.
-    if (!Number.isFinite(charge) || charge <= 0) {
-      throw new Error('This service has not been priced yet. Please contact support.');
-    }
-
-    // Check user balance
-    const profile = await authAPI.getUserProfile();
-    if (!profile || profile.balance < charge) {
-      throw new Error('Insufficient balance');
-    }
-
-    // Create order with delivery time
+    await getAuthenticatedUser();
     const { data, error } = await runSupabaseQuery(
-      supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          service_id: serviceId,
-          provider_id: providerId || null,
-          provider_order_id: providerOrderId || null,
-          link,
-          quantity,
-          charge,
-          delivery_time: deliveryTime,
-          status: initialStatus,
-        })
-        .select()
-        .single(),
-      'create order'
+      supabase.rpc('place_order', {
+        p_service_id: serviceId,
+        p_link: link,
+        p_quantity: quantity,
+        p_delivery_time: deliveryTime,
+        p_provider_id: null,
+        p_provider_order_id: null,
+        p_runs: null,
+        p_interval_minutes: null,
+      }),
+      'place order'
     );
-
     if (error) throw error;
-
-    // Deduct balance and update spent
-    const { error: balanceError } = await runSupabaseQuery(
-      supabase
-        .from('user_profiles')
-        .update({
-          balance: profile.balance - charge,
-          total_spent: profile.total_spent + charge,
-        })
-        .eq('id', user.id),
-      'order balance update'
-    );
-
-    if (balanceError) throw balanceError;
-
     return data as Order;
   },
 
@@ -613,28 +559,15 @@ export const ordersAPI = {
 export const paymentsAPI = {
   async createPayment(amount: number, paymentMethod: string) {
     try {
-      const user = await getAuthenticatedUser();
-      const fee = amount * 0.02;
-      const total = amount + fee;
-
-      const { data, error } = await runSupabaseQuery(
-        supabase
-          .from('payments')
-          .insert({
-            user_id: user.id,
-            amount,
-            fee,
-            total,
-            payment_method: paymentMethod,
-            payment_provider: 'fastpay',
-          })
-          .select()
-          .single(),
-        'create payment'
-      );
-
-      if (error) throw error;
-      return data as Payment;
+      const response = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ amount, paymentMethod }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error?.message || payload?.message || 'Could not create payment');
+      return payload?.data?.payment as Payment;
     } catch (error) {
       console.error('[paymentsAPI] createPayment failed:', error);
       throw error;
@@ -657,66 +590,8 @@ export const paymentsAPI = {
     return data as Payment[];
   },
 
-  async updatePaymentStatus(paymentId: string, status: Payment['status'], transactionId?: string, fastpayOrderId?: string) {
-    try {
-      const updateData: any = {
-        status,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (transactionId) {
-        updateData.transaction_id = transactionId;
-      }
-
-      if (fastpayOrderId) {
-        updateData.fastpay_order_id = fastpayOrderId;
-      }
-
-      const { data, error } = await runSupabaseQuery(
-        supabase
-          .from('payments')
-          .update(updateData)
-          .eq('id', paymentId)
-          .select()
-          .single(),
-        'payment status update'
-      );
-
-      if (error) throw error;
-
-      if (status === 'completed') {
-        const payment = data as Payment;
-        const { data: profileData, error: profileError } = await runSupabaseQuery(
-          supabase
-            .from('user_profiles')
-            .select('balance')
-            .eq('id', payment.user_id)
-            .single(),
-          'payment profile lookup'
-        );
-
-        if (profileError) throw profileError;
-
-        if (profileData) {
-          const { error: updateBalanceError } = await runSupabaseQuery(
-            supabase
-              .from('user_profiles')
-              .update({
-                balance: profileData.balance + payment.amount,
-              })
-              .eq('id', payment.user_id),
-            'payment balance credit'
-          );
-
-          if (updateBalanceError) throw updateBalanceError;
-        }
-      }
-
-      return data as Payment;
-    } catch (error) {
-      console.error('[paymentsAPI] updatePaymentStatus failed:', error);
-      throw error;
-    }
+  async updatePaymentStatus(_paymentId: string, _status: Payment['status'], _transactionId?: string, _fastpayOrderId?: string) {
+    throw new Error('Payment status is updated only by verified server-side gateway events.');
   },
 };
 

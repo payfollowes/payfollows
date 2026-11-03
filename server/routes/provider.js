@@ -378,88 +378,47 @@ router.post('/add-order', requireActiveAccount, async (req, res) => {
 
 /**
  * GET /api/provider/order-status
- * Get status of one or more orders
- * Query: provider_id, orders (comma-separated order IDs or single ID), local_order_id?
+ * Status is resolved from an owned local order; caller-supplied provider and
+ * upstream order IDs are never trusted.
  */
 router.get('/order-status', async (req, res) => {
+  const localOrderId = String(req.query?.local_order_id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(localOrderId)) {
+    return res.status(400).json({ error: 'A valid local_order_id is required.' });
+  }
   try {
-    const { provider_id, orders, local_order_id } = req.query;
-
-    if (!provider_id || !orders) {
-      return res.status(400).json({
-        error: 'Missing required fields: provider_id, orders',
-      });
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .select('id, user_id, provider_id, provider_order_id, status, start_count, remains')
+      .eq('id', localOrderId)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (orderError) throw orderError;
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!order.provider_id || !order.provider_order_id) {
+      return res.status(409).json({ error: 'This order has not been linked to a provider yet.' });
     }
-
     const { data: provider, error: providerError } = await supabaseAdmin
       .from('providers')
       .select('id, name, api_key, api_url')
-      .eq('id', provider_id)
-      .single();
+      .eq('id', order.provider_id)
+      .maybeSingle();
+    if (providerError) throw providerError;
+    if (!provider?.api_key) return res.status(503).json({ error: 'The assigned provider is unavailable.' });
 
-    if (providerError || !provider) {
-      return res.status(404).json({ error: 'Provider not found' });
-    }
-
-    if (!provider.api_key) {
-      return res.status(400).json({ error: 'Provider API key not configured' });
-    }
-
-    const orderValue = String(orders);
-    const isSingleOrder = !orderValue.includes(',');
-    const params = {
-      action: 'status',
-      order: isSingleOrder ? orderValue : undefined,
-      orders: isSingleOrder ? undefined : orderValue,
-    };
-
-    const result = await callDaoSMM(provider, params);
+    const result = await callDaoSMM(provider, { action: 'status', order: String(order.provider_order_id) });
     const providerErrorMessage = extractProviderError(result);
-
-    if (providerErrorMessage) {
-      return res.status(400).json({
-        error: 'Failed to fetch order status',
-        details: providerErrorMessage,
-      });
-    }
-
-    let localOrder = null;
-    if (local_order_id) {
-      const statusNode = pickStatusNode(result, orderValue);
-      localOrder = await updateLocalOrder(local_order_id, {
-        provider_id,
-        provider_order_id: isSingleOrder ? orderValue : undefined,
-        status: mapProviderStatusToLocal(
-          statusNode?.status || statusNode?.Status || statusNode
-        ),
-        start_count:
-          statusNode?.start_count !== undefined && statusNode?.start_count !== null
-            ? Number(statusNode.start_count)
-            : undefined,
-        remains:
-          statusNode?.remains !== undefined && statusNode?.remains !== null
-            ? Number(statusNode.remains)
-            : undefined,
-      });
-    }
-
-    console.log('[DaoSMM Bridge] Order status retrieved:', {
-      provider: provider.name,
-      orderCount: isSingleOrder ? 1 : orderValue.split(',').length,
-    });
-
-    return res.json({
-      ok: true,
-      status: result,
-      provider: provider.name,
-      localOrder,
-    });
+    if (providerErrorMessage) return res.status(502).json({ error: 'Provider status is temporarily unavailable.' });
+    const node = pickStatusNode(result, order.provider_order_id);
+    const localOrder = await updateLocalOrder(order.id, {
+      status: mapProviderStatusToLocal(node?.status || node?.Status || node),
+      start_count: node?.start_count != null ? Number(node.start_count) : undefined,
+      remains: node?.remains != null ? Number(node.remains) : undefined,
+    }, req.user.id);
+    return res.json({ ok: true, status: result, localOrder });
   } catch (error) {
-    console.error('[DaoSMM Bridge] Get order status error:', error);
-    return res.status(500).json({
-      error: 'Failed to fetch order status',
-      message: error.message,
-    });
+    console.error('[DaoSMM Bridge] Get order status error:', { localOrderId, message: error.message });
+    return res.status(502).json({ error: 'Provider status is temporarily unavailable.' });
   }
 });
 
@@ -615,7 +574,7 @@ router.post('/sync-local-orders', async (req, res) => {
 
     const appliedUpdates = await Promise.all(
       updatedOrders.map(async (entry) => {
-        const updated = await updateLocalOrder(entry.orderId, entry.updates);
+        const updated = await updateLocalOrder(entry.orderId, entry.updates, userId);
         return updated || null;
       })
     );
@@ -701,132 +660,61 @@ router.get('/balance', requireAdmin, async (req, res) => {
 });
 
 /**
- * POST /api/provider/refill
- * Create refill for order(s)
- * Body: { provider_id, orders (comma-separated) }
+ * Refill only an owned, locally recorded completed order.
  */
 router.post('/refill', async (req, res) => {
+  const localOrderId = String(req.body?.local_order_id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(localOrderId)) return res.status(400).json({ error: 'A valid local_order_id is required.' });
   try {
-    const { provider_id, orders } = req.body;
-
-    if (!provider_id || !orders) {
-      return res.status(400).json({
-        error: 'Missing required fields: provider_id, orders',
-      });
-    }
-
-    const { data: provider, error: providerError } = await supabaseAdmin
-      .from('providers')
-      .select('id, name, api_key, api_url')
-      .eq('id', provider_id)
-      .single();
-
-    if (providerError || !provider) {
-      return res.status(404).json({ error: 'Provider not found' });
-    }
-
-    if (!provider.api_key) {
-      return res.status(400).json({ error: 'Provider API key not configured' });
-    }
-
-    const orderValue = String(orders);
-    const isSingleOrder = !orderValue.includes(',');
-    const params = {
-      action: 'refill',
-      order: isSingleOrder ? orderValue : undefined,
-      orders: isSingleOrder ? undefined : orderValue,
-    };
-
-    const result = await callDaoSMM(provider, params);
+    const { data: order, error } = await supabaseAdmin.from('orders')
+      .select('id, user_id, provider_id, provider_order_id, status')
+      .eq('id', localOrderId).eq('user_id', req.user.id).maybeSingle();
+    if (error) throw error;
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (String(order.status).toLowerCase() !== 'completed') return res.status(409).json({ error: 'Refill is available only after order completion.' });
+    if (!order.provider_id || !order.provider_order_id) return res.status(409).json({ error: 'This order has no provider link.' });
+    const { data: provider, error: providerError } = await supabaseAdmin.from('providers')
+      .select('id, name, api_key, api_url').eq('id', order.provider_id).maybeSingle();
+    if (providerError) throw providerError;
+    if (!provider?.api_key) return res.status(503).json({ error: 'The assigned provider is unavailable.' });
+    const result = await callDaoSMM(provider, { action: 'refill', order: String(order.provider_order_id) });
     const providerErrorMessage = extractProviderError(result);
-
-    if (providerErrorMessage) {
-      return res.status(400).json({
-        error: 'Failed to create refill',
-        details: providerErrorMessage,
-      });
-    }
-
-    console.log('[DaoSMM Bridge] Refill created:', {
-      provider: provider.name,
-      orderCount: isSingleOrder ? 1 : orderValue.split(',').length,
-      refillInfo: isSingleOrder ? result.refill : 'multiple',
-    });
-
-    return res.json({
-      ok: true,
-      refill: result,
-      provider: provider.name,
-    });
+    if (providerErrorMessage) return res.status(502).json({ error: 'Provider could not accept the refill request.' });
+    return res.json({ ok: true, refill: result, provider: provider.name });
   } catch (error) {
-    console.error('[DaoSMM Bridge] Create refill error:', error);
-    return res.status(500).json({
-      error: 'Failed to create refill',
-      message: error.message,
-    });
+    console.error('[DaoSMM Bridge] Refill error:', { localOrderId, message: error.message });
+    return res.status(502).json({ error: 'Refill request is temporarily unavailable.' });
   }
 });
 
 /**
- * POST /api/provider/cancel
- * Cancel order(s)
- * Body: { provider_id, orders (comma-separated) }
+ * Cancel only an owned active order and derive upstream identifiers from DB.
  */
 router.post('/cancel', async (req, res) => {
+  const localOrderId = String(req.body?.local_order_id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(localOrderId)) return res.status(400).json({ error: 'A valid local_order_id is required.' });
   try {
-    const { provider_id, orders } = req.body;
-
-    if (!provider_id || !orders) {
-      return res.status(400).json({
-        error: 'Missing required fields: provider_id, orders',
-      });
+    const { data: order, error } = await supabaseAdmin.from('orders')
+      .select('id, user_id, provider_id, provider_order_id, status')
+      .eq('id', localOrderId).eq('user_id', req.user.id).maybeSingle();
+    if (error) throw error;
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!['pending', 'processing'].includes(String(order.status).toLowerCase())) {
+      return res.status(409).json({ error: 'Only active orders can be canceled.' });
     }
-
-    const { data: provider, error: providerError } = await supabaseAdmin
-      .from('providers')
-      .select('id, name, api_key, api_url')
-      .eq('id', provider_id)
-      .single();
-
-    if (providerError || !provider) {
-      return res.status(404).json({ error: 'Provider not found' });
-    }
-
-    if (!provider.api_key) {
-      return res.status(400).json({ error: 'Provider API key not configured' });
-    }
-
-    const params = {
-      action: 'cancel',
-      orders: String(orders),
-    };
-
-    const result = await callDaoSMM(provider, params);
+    if (!order.provider_id || !order.provider_order_id) return res.status(409).json({ error: 'This order has no provider link.' });
+    const { data: provider, error: providerError } = await supabaseAdmin.from('providers')
+      .select('id, name, api_key, api_url').eq('id', order.provider_id).maybeSingle();
+    if (providerError) throw providerError;
+    if (!provider?.api_key) return res.status(503).json({ error: 'The assigned provider is unavailable.' });
+    const result = await callDaoSMM(provider, { action: 'cancel', orders: String(order.provider_order_id) });
     const providerErrorMessage = extractProviderError(result);
-
-    if (providerErrorMessage) {
-      return res.status(400).json({
-        error: 'Failed to cancel order',
-        details: providerErrorMessage,
-      });
-    }
-
-    console.log('[DaoSMM Bridge] Order cancelled:', {
-      provider: provider.name,
-      orderCount: String(orders).split(',').length,
-    });
-
-    return res.json({
-      ok: true,
-      cancel: result,
-      provider: provider.name,
-    });
+    if (providerErrorMessage) return res.status(502).json({ error: 'Provider could not accept the cancellation request.' });
+    const localOrder = await updateLocalOrder(order.id, { status: 'canceled' }, req.user.id);
+    return res.json({ ok: true, cancel: result, provider: provider.name, localOrder });
   } catch (error) {
-    console.error('[DaoSMM Bridge] Cancel order error:', error);
-    return res.status(500).json({
-      error: 'Failed to cancel order',
-      message: error.message,
-    });
+    console.error('[DaoSMM Bridge] Cancel error:', { localOrderId, message: error.message });
+    return res.status(502).json({ error: 'Cancellation request is temporarily unavailable.' });
   }
 });
 

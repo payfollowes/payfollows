@@ -1,5 +1,5 @@
-﻿import path from 'path';
-import { defineConfig, loadEnv, splitVendorChunkPlugin, type UserConfig } from 'vite';
+import path from 'path';
+import { defineConfig, loadEnv, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(async ({ mode }) => {
@@ -38,15 +38,7 @@ export default defineConfig(async ({ mode }) => {
           }
         }
       },
-      plugins: [
-        react(),
-        splitVendorChunkPlugin(),
-        visualizerPlugin,
-      ].filter(Boolean),
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      plugins: [react(), visualizerPlugin].filter(Boolean),
       resolve: {
         alias: {
           '@': path.resolve(__dirname, 'src'),
@@ -70,20 +62,6 @@ export default defineConfig(async ({ mode }) => {
           format: {
             comments: false,
           }
-        },
-        rollupOptions: {
-          output: {
-            manualChunks(id) {
-              if (id.includes('node_modules')) {
-                if (id.includes('@supabase')) return 'supabase';
-                if (id.includes('@tanstack')) return 'react-query';
-                if (id.includes('@vercel/analytics')) return 'feature-analytics';
-                if (id.includes('react')) return 'react-vendor';
-                return 'vendor';
-              }
-              return undefined;
-            },
-          },
         },
         cssCodeSplit: true,
         sourcemap: false,

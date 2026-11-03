@@ -44,17 +44,21 @@ describe('auth and payments APIs', () => {
     expect(mockSupabaseClient.from).toHaveBeenCalled();
   });
 
-  it('creates a payment record when requested', async () => {
-    const insertChain = {
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: { id: 'payment-1', user_id: 'user-1', amount: 10 }, error: null }),
-    };
-    mockSupabaseClient.from.mockReturnValue({
-      insert: vi.fn().mockReturnValue(insertChain),
+  it('creates a payment through the authenticated server endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { payment: { id: 'payment-1', user_id: 'user-1', amount: 10 } } }),
     });
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await paymentsAPI.createPayment(10, 'fastpay');
 
     expect(result.id).toBe('payment-1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/payments/create', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ amount: 10, paymentMethod: 'fastpay' }),
+    }));
+    expect(mockSupabaseClient.from).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
