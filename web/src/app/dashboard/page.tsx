@@ -36,20 +36,50 @@ export default function DashboardOverviewPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     void refreshProfile();
-    Promise.all([
-      ordersAPI.getOrders().catch(() => []),
-      servicesAPI.getMergedServices().catch(() => []),
-      announcementAPI.listActive().catch(() => []),
-    ]).then(([o, s, a]) => {
-      setOrders(o);
-      setServices(s);
-      setAnnouncements(a);
-      setLoading(false);
+
+    ordersAPI.getOrders().then((rows) => {
+      if (mounted) setOrders(rows);
+    }).catch(() => {
+      if (mounted) setOrders([]);
+    }).finally(() => {
+      if (mounted) setOrdersLoading(false);
     });
+
+    // Render popular services from the primary catalog response immediately;
+    // provider enrichment must not hold the dashboard's charts and cards open.
+    servicesAPI.getServices().then((rows) => {
+      if (mounted) {
+        setServices(rows);
+        setServicesLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setServicesLoading(false);
+    });
+    servicesAPI.getMergedServices().then((rows) => {
+      if (mounted) {
+        setServices(rows);
+        setServicesLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setServicesLoading(false);
+    });
+
+    announcementAPI.listActive().then((rows) => {
+      if (mounted) setAnnouncements(rows);
+    }).catch(() => {
+      if (mounted) setAnnouncements([]);
+    }).finally(() => {
+      if (mounted) setAnnouncementsLoading(false);
+    });
+
+    return () => { mounted = false; };
   }, [refreshProfile]);
 
   const popular = useMemo(() => services.filter((s) => s.status === 'active').slice(0, 6), [services]);
@@ -68,7 +98,7 @@ export default function DashboardOverviewPage() {
 
       {/* ── KPI row: key numbers first, above the charts ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {loading ? (
+        {ordersLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[92px] rounded-2xl" />)
         ) : (
           <>
@@ -84,7 +114,7 @@ export default function DashboardOverviewPage() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         {/* Center column */}
         <div className="space-y-5">
-          {loading ? (
+          {ordersLoading ? (
             <Skeleton className="h-[420px] rounded-3xl" />
           ) : (
             <BalanceOverview orders={orders} balance={profile?.balance ?? 0} formatAmount={formatAmount} />
@@ -92,7 +122,7 @@ export default function DashboardOverviewPage() {
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <PromoCard />
-            {loading ? (
+            {ordersLoading ? (
               <Skeleton className="h-[380px] rounded-3xl" />
             ) : (
               <SpendingCard orders={orders} formatAmount={formatAmount} />
@@ -110,7 +140,7 @@ export default function DashboardOverviewPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {servicesLoading ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Skeleton key={i} className="h-28 rounded-2xl" />
@@ -169,13 +199,8 @@ export default function DashboardOverviewPage() {
 
         {/* Right finance rail */}
         <div className="space-y-5">
-          {loading ? (
-            <Skeleton className="h-[420px] rounded-3xl" />
-          ) : (
-            <WalletPanel balance={profile?.balance ?? 0} formatAmount={formatAmount} />
-          )}
-
-          {loading ? (
+          <WalletPanel balance={profile?.balance ?? 0} formatAmount={formatAmount} />
+          {ordersLoading ? (
             <Skeleton className="h-[360px] rounded-3xl" />
           ) : (
             <RecentTransactions orders={orders} formatAmount={formatAmount} />
@@ -188,7 +213,7 @@ export default function DashboardOverviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {announcementsLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-20 rounded-2xl" />
                   <Skeleton className="h-20 rounded-2xl" />

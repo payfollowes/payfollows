@@ -32,7 +32,7 @@ const METHOD_CATALOG = [
 
 // Used only if the capability endpoint is unreachable: FastPay remains the
 // known-working default gateway.
-const FALLBACK_AVAILABILITY: Record<string, boolean> = { fastpay: true };
+const FALLBACK_AVAILABILITY: Record<string, boolean> = { fastpay: false };
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
 
@@ -67,7 +67,6 @@ function AddFundsInner() {
       .then(setLedger)
       .catch(() => setLedger([]));
     paymentsAPI.getMethods().then((methods) => {
-      if (methods.length === 0) return; // keep the FastPay fallback
       const map: Record<string, boolean> = {};
       methods.forEach((m) => {
         map[m.id] = m.available;
@@ -80,7 +79,7 @@ function AddFundsInner() {
     });
   }, [params, refreshProfile]);
 
-  const selectedAvailable = availability[method] !== false;
+  const selectedAvailable = Boolean(availability[method]);
 
   const amountNum = Number(amount) || 0;
   const fee = amountNum * 0.02;
@@ -98,8 +97,8 @@ function AddFundsInner() {
     try {
       const payment = await paymentsAPI.createPayment(amountNum, method);
       const gateway = await paymentsAPI.createGatewayOrder(payment, profile, method);
-      if (gateway?.payment_url || gateway?.redirect_url || gateway?.url) {
-        window.location.href = gateway.payment_url || gateway.redirect_url || gateway.url;
+      if (gateway?.paymentUrl || gateway?.payment_url || gateway?.redirect_url || gateway?.url) {
+        window.location.href = gateway.paymentUrl || gateway.payment_url || gateway.redirect_url || gateway.url;
       } else {
         toast.info('Deposit request created. Gateway will confirm shortly.');
       }
@@ -121,7 +120,7 @@ function AddFundsInner() {
             <form onSubmit={submit} className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {METHOD_CATALOG.map((m) => {
-                  const available = availability[m.id] !== false;
+                  const available = Boolean(availability[m.id]);
                   const active = method === m.id;
                   return (
                     <button

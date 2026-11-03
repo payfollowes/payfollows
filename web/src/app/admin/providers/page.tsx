@@ -145,7 +145,7 @@ export default function AdminProvidersPage() {
                 <Label>API Key</Label>
                 <Input required value={form.api_key} onChange={set('api_key')} placeholder="••••••••" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Balance</Label>
                   <Input type="number" step="0.01" value={form.balance} onChange={set('balance')} />

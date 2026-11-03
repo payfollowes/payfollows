@@ -263,14 +263,49 @@ export const authAPI = {
 /* Services                                                            */
 /* ------------------------------------------------------------------ */
 
+const SERVICE_CATALOG_TTL = 15_000;
+let serviceCatalogCache: Service[] | null = null;
+let serviceCatalogCacheExpires = 0;
+let serviceCatalogRequest: Promise<Service[]> | null = null;
+
+async function loadServiceCatalog(): Promise<Service[]> {
+  if (serviceCatalogCache && serviceCatalogCacheExpires > Date.now()) return serviceCatalogCache;
+
+  if (!serviceCatalogRequest) {
+    const request = (async () => {
+      const res = await apiFetch('/api/services');
+      if (!res.ok) throw new Error(`Failed to fetch services: ${res.status}`);
+      const payload = await res.json().catch(() => ({}));
+      return (Array.isArray(payload?.services) ? payload.services : []) as Service[];
+    })();
+    serviceCatalogRequest = request;
+    request.then(
+      (rows) => {
+        serviceCatalogCache = rows;
+        serviceCatalogCacheExpires = Date.now() + SERVICE_CATALOG_TTL;
+        if (serviceCatalogRequest === request) serviceCatalogRequest = null;
+      },
+      () => {
+        if (serviceCatalogRequest === request) serviceCatalogRequest = null;
+      }
+    );
+  }
+
+  return serviceCatalogRequest;
+}
+
 export const servicesAPI = {
   async getServices(category?: string): Promise<Service[]> {
-    const res = await apiFetch('/api/services');
-    if (!res.ok) throw new Error(`Failed to fetch services: ${res.status}`);
-    const payload = await res.json().catch(() => ({}));
-    const rows: Service[] = Array.isArray(payload?.services) ? payload.services : [];
+    const rows = await loadServiceCatalog();
     return category ? rows.filter((s) => s.category === category) : rows;
   },
+
+  /** Clear the short-lived storefront cache after a service catalog mutation. */
+  clearCatalogCache() {
+    serviceCatalogCache = null;
+    serviceCatalogCacheExpires = 0;
+  },
+
 
   async getService(id: string): Promise<Service> {
     const res = await apiFetch(`/api/services/${encodeURIComponent(id)}`);
@@ -347,10 +382,7 @@ export const ordersAPI = {
     serviceId: string,
     link: string,
     quantity: number,
-    deliveryTime = 24,
-    providerId?: string,
-    providerOrderId?: string,
-    drip?: { runs: number; intervalMinutes: number }
+    deliveryTime = 24
   ): Promise<Order> {
     // Atomic, server-side operation: the place_order RPC validates the
     // service, resolves the margin-managed rate, checks the balance under a
@@ -363,10 +395,10 @@ export const ordersAPI = {
         p_link: link,
         p_quantity: quantity,
         p_delivery_time: deliveryTime,
-        p_provider_id: providerId ?? null,
-        p_provider_order_id: providerOrderId ?? null,
-        p_runs: drip?.runs ?? null,
-        p_interval_minutes: drip?.intervalMinutes ?? null,
+        p_provider_id: null,
+        p_provider_order_id: null,
+        p_runs: null,
+        p_interval_minutes: null,
       }),
       'place order'
     );
@@ -390,7 +422,13 @@ export const ordersAPI = {
 
   async syncOrders() {
     try {
-      const res = await apiFetch('/api/provider/sync-local-orders', { method: 'POST' });
+      const orders = await this.getOrders();
+      const order_ids = orders.filter((order) => order.provider_order_id).map((order) => order.id);
+      if (order_ids.length === 0) return { updatedOrders: [] };
+      const res = await apiFetch('/api/provider/sync-local-orders', {
+        method: 'POST',
+        body: JSON.stringify({ order_ids }),
+      });
       if (!res.ok) return null;
       return res.json().catch(() => null);
     } catch (error) {
@@ -399,15 +437,10 @@ export const ordersAPI = {
     }
   },
 
-  async placeWithProvider(providerId: string, providerServiceId: string, link: string, quantity: number) {
+  async placeWithProvider(localOrderId: string) {
     const res = await apiFetch('/api/provider/add-order', {
       method: 'POST',
-      body: JSON.stringify({
-        provider_id: providerId,
-        service: Number(providerServiceId),
-        link,
-        quantity,
-      }),
+      body: JSON.stringify({ local_order_id: localOrderId }),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || 'Provider order failed');
@@ -421,7 +454,7 @@ export const ordersAPI = {
     }
     const res = await apiFetch('/api/provider/refill', {
       method: 'POST',
-      body: JSON.stringify({ provider_id: order.provider_id, orders: order.provider_order_id }),
+      body: JSON.stringify({ local_order_id: order.id }),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.details || payload?.error || 'Refill request failed');
@@ -436,7 +469,7 @@ export const ordersAPI = {
     }
     const res = await apiFetch('/api/provider/cancel', {
       method: 'POST',
-      body: JSON.stringify({ provider_id: order.provider_id, orders: order.provider_order_id }),
+      body: JSON.stringify({ local_order_id: order.id }),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.details || payload?.error || 'Cancel request failed');
@@ -462,7 +495,7 @@ export const paymentsAPI = {
   // everything else renders as "Coming soon" in the wallet UI.
   async getMethods(): Promise<PaymentMethodInfo[]> {
     try {
-      const res = await fetch(apiUrl('/payments/methods'), {
+      const res = await apiFetch('/api/payments/methods', {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
@@ -475,26 +508,13 @@ export const paymentsAPI = {
   },
 
   async createPayment(amount: number, paymentMethod: string): Promise<Payment> {
-    const user = await getAuthenticatedUser();
-    const fee = amount * 0.02;
-    const total = amount + fee;
-    const { data, error } = await runQuery(
-      supabase
-        .from('payments')
-        .insert({
-          user_id: user.id,
-          amount,
-          fee,
-          total,
-          payment_method: paymentMethod,
-          payment_provider: paymentMethod === 'payfast' ? 'payfast' : 'fastpay',
-        })
-        .select()
-        .single(),
-      'create payment'
-    );
-    if (error) throw error;
-    return data as Payment;
+    const res = await apiFetch('/api/payments/create', {
+      method: 'POST',
+      body: JSON.stringify({ amount, paymentMethod }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw bridgeError(res, payload, 'Could not create payment');
+    return payload?.data?.payment as Payment;
   },
 
   async getPayments(): Promise<Payment[]> {
@@ -511,24 +531,17 @@ export const paymentsAPI = {
     return data as Payment[];
   },
 
-  async createGatewayOrder(payment: Payment, profile: UserProfile, method: string) {
-    if (method !== 'fastpay' && method !== 'payfast') {
+  async createGatewayOrder(payment: Payment, _profile: UserProfile, method: string) {
+    if (method !== 'fastpay') {
       throw new Error('This payment method is not available yet. Please choose a live gateway.');
     }
-    const endpoint = method === 'payfast' ? '/api/payments/payfast' : '/api/fastpay/create-order';
-    const res = await apiFetch(endpoint, {
+    const res = await apiFetch('/api/fastpay/create-order', {
       method: 'POST',
-      body: JSON.stringify({
-        paymentId: payment.id,
-        amount: payment.total,
-        customerEmail: profile.email,
-        customerName: profile.username,
-        returnUrl: `${window.location.origin}/dashboard/add-funds?success=true&payment_id=${payment.id}`,
-        cancelUrl: `${window.location.origin}/dashboard/add-funds?canceled=true&payment_id=${payment.id}`,
-      }),
+      body: JSON.stringify({ paymentId: payment.id }),
     });
-    if (!res.ok) throw new Error(`Payment gateway error (${res.status})`);
-    return res.json().catch(() => ({}));
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw bridgeError(res, payload, 'Payment gateway could not start checkout');
+    return payload?.data ?? payload;
   },
 };
 

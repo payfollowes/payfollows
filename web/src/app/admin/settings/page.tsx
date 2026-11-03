@@ -113,7 +113,7 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setGeneral((g) => ({ ...g, supportEmail: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Min Deposit (USD)</Label>
                 <Input

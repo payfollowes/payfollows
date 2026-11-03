@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, MoreHorizontal, Settings } from 'lucide-react';
 import { LogoMark } from '@/components/shared/logo';
 import {
   Tooltip,
@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 import { USER_NAV, ADMIN_NAV, type NavItem } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -42,6 +43,8 @@ export function IconSidebar({ variant }: IconSidebarProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const nav = variant === 'admin' ? ADMIN_NAV : USER_NAV;
+  const mobilePrimary = nav.slice(0, 5);
+  const mobileMore = nav.slice(5);
   const [expanded, setExpanded] = useState(false);
 
   const handleSignOut = async () => {
@@ -159,9 +162,9 @@ export function IconSidebar({ variant }: IconSidebarProps) {
         </div>
       </aside>
 
-      {/* Mobile bottom navigation */}
-      <nav className="fixed inset-x-3 bottom-3 z-40 flex items-center gap-1 overflow-x-auto rounded-3xl border border-[rgba(167,139,250,0.14)] bg-ink-900/95 px-2 py-2 shadow-card backdrop-blur-2xl no-scrollbar lg:hidden">
-        {nav.map((item) => {
+      {/* Mobile navigation keeps core destinations visible and puts the full menu in More. */}
+      <nav aria-label="Mobile navigation" className="fixed inset-x-3 bottom-3 z-40 flex items-center gap-1 rounded-3xl border border-[rgba(167,139,250,0.14)] bg-ink-900/95 px-1.5 py-2 shadow-card backdrop-blur-2xl lg:hidden">
+        {mobilePrimary.map((item) => {
           const active = isActive(pathname, item, variant);
           const Icon = item.icon;
           return (
@@ -169,8 +172,10 @@ export function IconSidebar({ variant }: IconSidebarProps) {
               key={item.href}
               href={item.href}
               aria-label={item.label}
+              title={item.label}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex h-11 min-w-[44px] flex-1 shrink-0 items-center justify-center rounded-2xl transition-all',
+                'flex h-11 min-w-0 flex-1 items-center justify-center rounded-2xl transition-all',
                 active
                   ? 'bg-primary-gradient text-white shadow-glow-brand'
                   : 'text-muted-foreground hover:text-foreground'
@@ -180,6 +185,40 @@ export function IconSidebar({ variant }: IconSidebarProps) {
             </Link>
           );
         })}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="More navigation options"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+          >
+            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" className="max-h-[70dvh] w-64 overflow-y-auto">
+            <DropdownMenuLabel>More pages</DropdownMenuLabel>
+            {mobileMore.map((item) => {
+              const active = isActive(pathname, item, variant);
+              const Icon = item.icon;
+              return (
+                <DropdownMenuItem key={item.href} asChild className={active ? 'bg-primary-500/15 text-white' : ''}>
+                  <Link href={item.href} aria-current={active ? 'page' : undefined}>
+                    <Icon aria-hidden="true" /> {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })}
+            {variant === 'user' && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={settingsHref}><Settings aria-hidden="true" /> Settings</Link>
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void handleSignOut()} className="text-red-400 focus:text-red-400">
+              <LogOut aria-hidden="true" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
     </TooltipProvider>
   );

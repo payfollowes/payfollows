@@ -105,15 +105,18 @@ function LoginForm() {
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-4">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">OR</span>
-        <Separator className="flex-1" />
-      </div>
-
-      <Button variant="secondary" className="w-full" size="lg" onClick={google} type="button">
-        <Chrome /> Continue with Google
-      </Button>
+      {process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true' && (
+        <>
+          <div className="my-6 flex items-center gap-4">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
+          </div>
+          <Button variant="secondary" className="w-full" size="lg" onClick={google} type="button">
+            <Chrome /> Continue with Google
+          </Button>
+        </>
+      )}
     </AuthShell>
   );
 }

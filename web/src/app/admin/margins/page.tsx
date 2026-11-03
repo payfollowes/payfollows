@@ -233,7 +233,7 @@ export default function AdminMarginsPage() {
                   A provider-level rule with no category/service becomes that provider&apos;s default markup on sync.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Category (optional)</Label>
                   <Input value={form.category} onChange={set('category')} placeholder="Instagram" />
@@ -243,7 +243,7 @@ export default function AdminMarginsPage() {
                   <Input value={form.service_id} onChange={set('service_id')} placeholder="UUID" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Margin type</Label>
                   <Select
@@ -264,7 +264,7 @@ export default function AdminMarginsPage() {
                   <Input type="number" step="0.01" min="0" required value={form.margin_value} onChange={set('margin_value')} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Min margin (optional)</Label>
                   <Input type="number" step="0.01" min="0" value={form.min_margin} onChange={set('min_margin')} />
@@ -274,7 +274,7 @@ export default function AdminMarginsPage() {
                   <Input type="number" step="0.01" min="0" value={form.max_margin} onChange={set('max_margin')} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Priority</Label>
                   <Input type="number" step="1" min="1" value={form.priority} onChange={set('priority')} />

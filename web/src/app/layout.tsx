@@ -7,14 +7,14 @@ import './globals.css';
 import { Providers as AppProviders } from './providers';
 
 export const metadata: Metadata = {
-  title: 'PayFollows — Fastest & Cheapest Social Media Marketing Panel',
+  title: 'PayFollows — Social Service Orders & Wallet',
   description:
-    'PayFollows is the #1 SMM panel for Instagram, TikTok, YouTube, Facebook and more. Fast delivery, cheapest prices, 24/7 support.',
-  keywords: ['SMM panel', 'social media marketing', 'Instagram followers', 'TikTok views', 'YouTube subscribers'],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://payfollows.vercel.app'),
+    'Browse social media services, review order pricing and track provider-reported order status in your PayFollows dashboard.',
+  keywords: ['social media services', 'social service orders', 'PayFollows'],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://payfollows-web.vercel.app'),
   openGraph: {
-    title: 'PayFollows — #1 SMM Panel',
-    description: 'Fastest & cheapest social media marketing services.',
+    title: 'PayFollows — Social Service Orders & Wallet',
+    description: 'Manage service orders, wallet activity and order status with PayFollows.',
     type: 'website',
   },
 };

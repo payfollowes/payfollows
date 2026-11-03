@@ -12,10 +12,8 @@ import {
   Link2,
   Hash,
   Gauge,
-  ShieldCheck,
   Timer,
   Sparkles,
-  Droplets,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -25,7 +23,6 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -55,53 +52,81 @@ function NewOrderInner() {
   const [serviceId, setServiceId] = useState('');
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [dripEnabled, setDripEnabled] = useState(false);
-  const [dripRuns, setDripRuns] = useState('5');
-  const [dripInterval, setDripInterval] = useState('60');
   const [submitting, setSubmitting] = useState(false);
 
+  const preselectedServiceId = params.get('service');
+
   useEffect(() => {
-    servicesAPI
-      .getMergedServices()
-      .then((rows) => {
-        const active = rows.filter((s) => s.status === 'active' && s.rate_per_1000 > 0);
-        setServices(active);
-        const preselected = params.get('service');
-        if (preselected) {
-          const svc = active.find((s) => s.id === preselected);
-          if (svc) {
-            setServiceId(svc.id);
-            setCategory(svc.category);
-          }
+    let active = true;
+    let baseLoaded = false;
+    const applyServices = (rows: Service[]) => {
+      const available = rows.filter((s) => s.status === 'active' && s.rate_per_1000 > 0);
+      setServices(available);
+      if (preselectedServiceId) {
+        const svc = available.find((s) => s.id === preselectedServiceId);
+        if (svc) {
+          setServiceId(svc.id);
+          setCategory(svc.category);
         }
-      })
-      .catch(() => toast.error('Failed to load services'))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }
+    };
+
+    // Render the main catalog as soon as the base service endpoint responds.
+    // Provider pricing/details are merged in the background so a slow provider
+    // snapshot cannot keep the whole New Order screen on skeletons.
+    servicesAPI.getServices().then((rows) => {
+      if (!active) return;
+      baseLoaded = true;
+      applyServices(rows);
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      baseLoaded = true;
+      setLoading(false);
+    });
+
+    servicesAPI.getMergedServices().then((rows) => {
+      if (!active) return;
+      applyServices(rows);
+      setLoading(false);
+    }).catch(() => {
+      if (active && !baseLoaded) {
+        setLoading(false);
+        toast.error('Failed to load services');
+      }
+    });
+
+    return () => { active = false; };
+  }, [preselectedServiceId]);
+
+  const matchesPlatform = (service: Service, id: string) => {
+    if (id === 'all') return true;
+    const value = service.category.toLowerCase();
+    const platformName = id.toLowerCase();
+    return value.includes(platformName) || (id === 'Twitter' && /(^|[^a-z])x([^a-z]|$)/.test(value));
+  };
 
   const categories = useMemo(() => {
-    const filtered = platform === 'all' ? services : services.filter((s) => s.category.includes(platform));
+    const filtered = services.filter((service) => matchesPlatform(service, platform));
     return Array.from(new Set(filtered.map((s) => s.category))).sort();
   }, [services, platform]);
 
   const visibleServices = useMemo(() => {
-    let rows = services;
-    if (platform !== 'all') rows = rows.filter((s) => s.category.includes(platform));
+    let rows = services.filter((service) => matchesPlatform(service, platform));
     if (category) rows = rows.filter((s) => s.category === category);
     if (search.trim()) rows = rows.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
     return rows.slice(0, 300);
   }, [services, platform, category, search]);
 
   const selected = useMemo(() => services.find((s) => s.id === serviceId) || null, [services, serviceId]);
+  const selectedInCurrentFilter = selected ? visibleServices.some((s) => s.id === selected.id) : false;
+  const serviceOptions = selected && !selectedInCurrentFilter
+    ? [selected, ...visibleServices]
+    : visibleServices;
 
   const qty = Number(quantity) || 0;
   const charge = selected && qty > 0 ? (selected.rate_per_1000 / 1000) * qty : 0;
   const quantityValid = selected ? qty >= selected.min_quantity && qty <= selected.max_quantity : false;
-  const runs = Number(dripRuns) || 0;
-  const intervalMinutes = Number(dripInterval) || 0;
-  const dripValid = !dripEnabled || (runs >= 2 && runs <= 100000 && intervalMinutes >= 1 && intervalMinutes <= 10080);
-  const perRun = dripEnabled && runs > 0 ? Math.floor(qty / runs) : 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,44 +134,32 @@ function NewOrderInner() {
     if (!link.trim()) return toast.error('Please enter your content link');
     if (!quantityValid)
       return toast.error(`Quantity must be between ${selected.min_quantity} and ${selected.max_quantity}`);
-    if (dripEnabled && !dripValid)
-      return toast.error('Drip-feed needs 2+ runs and an interval between 1 minute and 7 days');
     if ((profile?.balance ?? 0) < charge) return toast.error('Insufficient balance — please add funds first');
 
     setSubmitting(true);
     try {
+      const providerLink = await servicesAPI.resolveProviderLink(selected.id);
+      if (!providerLink) throw new Error('This service is temporarily unavailable for ordering.');
+
       const order = await ordersAPI.createOrder(
         selected.id,
         link.trim(),
         qty,
-        selected.completion_time ?? 24,
-        undefined,
-        undefined,
-        dripEnabled ? { runs, intervalMinutes } : undefined
+        selected.completion_time ?? 24
       );
-
-      // Best-effort placement through the provider bridge
-      try {
-        const providerLink = await servicesAPI.resolveProviderLink(selected.id);
-        if (providerLink) {
-          await ordersAPI.placeWithProvider(
-            providerLink.providerId,
-            providerLink.providerServiceId,
-            link.trim(),
-            qty
-          );
-        }
-      } catch (err) {
-        console.warn('[new-order] provider placement pending', err);
+      const providerResult = await ordersAPI.placeWithProvider(order.id);
+      if (providerResult?.pending) {
+        toast.info('Order saved; provider confirmation is pending. Do not place it again.');
+      } else {
+        toast.success(`Order placed! Charge: ${formatAmount(order.charge)}`);
       }
-
-      toast.success(`Order placed! Charge: ${formatAmount(order.charge)}`);
       await refreshProfile();
       setLink('');
       setQuantity('');
       setServiceId('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not place order');
+      void refreshProfile();
     } finally {
       setSubmitting(false);
     }
@@ -160,9 +173,16 @@ function NewOrderInner() {
           {PLATFORMS.map((p) => (
             <button
               key={p.id}
+              type="button"
+              aria-pressed={platform === p.id}
               onClick={() => {
                 setPlatform(p.id);
-                setCategory('');
+                const nextCategory = p.id === 'all'
+                  ? ''
+                  : services.filter((service) => matchesPlatform(service, p.id)).map((service) => service.category).sort()[0] ?? '';
+                setCategory(nextCategory);
+                // Deliberately keep serviceId: changing the platform/category
+                // filter must not silently replace the user's chosen service.
               }}
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all',
@@ -233,16 +253,23 @@ function NewOrderInner() {
                           <SelectValue placeholder="Select a service" />
                         </SelectTrigger>
                         <SelectContent className="max-h-96">
-                          {visibleServices.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              <span className="mr-2 text-primary-300 font-semibold">
-                                {formatAmount(s.rate_per_1000)}/1K
-                              </span>
-                              {s.name.length > 70 ? `${s.name.slice(0, 70)}…` : s.name}
-                            </SelectItem>
-                          ))}
+                          {serviceOptions.map((s) => {
+                            const keptSelection = s.id === selected?.id && !selectedInCurrentFilter;
+                            return (
+                              <SelectItem key={s.id} value={s.id}>
+                                <span className="mr-2 font-semibold text-primary-300">{formatAmount(s.rate_per_1000)}/1K</span>
+                                {s.name.length > 70 ? `${s.name.slice(0, 70)}…` : s.name}
+                                {keptSelection && <span className="ml-2 text-[10px] text-primary-300">Current selection</span>}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
+                      {selected && !selectedInCurrentFilter && (
+                        <p className="text-[11px] leading-5 text-primary-200/80">
+                          Your selection stays unchanged ({selected.category}). Choose another service only if you want to replace it.
+                        </p>
+                      )}
                       <div className="relative mt-2">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
@@ -290,109 +317,6 @@ function NewOrderInner() {
                       )}
                     </div>
 
-                    {/* Drip-feed delivery */}
-                    <div className="rounded-2xl pf-card-inner p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
-                            <Droplets className="h-5 w-5" />
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold text-white">Drip-feed delivery</p>
-                            <p className="text-xs text-muted-foreground">
-                              Split the total quantity into gradual runs instead of one instant delivery
-                            </p>
-                          </div>
-                        </div>
-                        <Switch checked={dripEnabled} onCheckedChange={setDripEnabled} />
-                      </div>
-
-                      {dripEnabled && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="mt-4 space-y-4 overflow-hidden"
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label htmlFor="runs" className="text-xs">
-                                Number of runs
-                              </Label>
-                              <Input
-                                id="runs"
-                                type="number"
-                                min={2}
-                                max={100000}
-                                value={dripRuns}
-                                onChange={(e) => setDripRuns(e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label htmlFor="interval" className="text-xs">
-                                Interval (minutes)
-                              </Label>
-                              <Input
-                                id="interval"
-                                type="number"
-                                min={1}
-                                max={10080}
-                                value={dripInterval}
-                                onChange={(e) => setDripInterval(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {[
-                              { label: '30 min', mins: 30 },
-                              { label: '1 hour', mins: 60 },
-                              { label: '6 hours', mins: 360 },
-                              { label: '24 hours', mins: 1440 },
-                            ].map((preset) => (
-                              <button
-                                key={preset.mins}
-                                type="button"
-                                onClick={() => setDripInterval(String(preset.mins))}
-                                className={cn(
-                                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                                  intervalMinutes === preset.mins
-                                    ? 'border-primary-500/50 bg-primary-500/15 text-primary-200'
-                                    : 'border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-white'
-                                )}
-                              >
-                                {preset.label}
-                              </button>
-                            ))}
-                          </div>
-                          {qty > 0 && runs >= 2 && (
-                            <div className="rounded-xl border border-primary-500/20 bg-primary-500/[0.08] p-3 text-xs leading-relaxed text-primary-100/90">
-                              <span className="font-bold text-white">{qty.toLocaleString()}</span> total units split
-                              across <span className="font-bold text-white">{runs}</span> runs
-                              {perRun > 0 && (
-                                <>
-                                  {' '}
-                                  (about <span className="font-bold text-white">{perRun.toLocaleString()}</span> per run),
-                                  delivered every{' '}
-                                  <span className="font-bold text-white">
-                                    {intervalMinutes >= 1440
-                                      ? `${intervalMinutes / 1440} ${intervalMinutes / 1440 === 1 ? 'day' : 'days'}`
-                                      : intervalMinutes >= 60
-                                        ? `${intervalMinutes / 60} ${intervalMinutes / 60 === 1 ? 'hour' : 'hours'}`
-                                        : `${intervalMinutes} ${intervalMinutes === 1 ? 'minute' : 'minutes'}`}
-                                  </span>
-                                </>
-                              )}
-                              . Total charge stays {formatAmount(charge)}.
-                            </div>
-                          )}
-                          {!dripValid && (
-                            <p className="text-xs font-medium text-red-400">
-                              Runs must be 2–100000 and interval 1–10080 minutes (7 days).
-                            </p>
-                          )}
-                        </motion.div>
-                      )}
-                    </div>
-
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
                         <p className="text-xs text-muted-foreground">Total Charge</p>
@@ -405,7 +329,7 @@ function NewOrderInner() {
                         size="lg"
                         loading={submitting}
                         className="sm:px-10"
-                        disabled={!selected || (dripEnabled && !dripValid)}
+                        disabled={!selected}
                       >
                         <ShoppingCart /> Buy Service
                       </Button>
@@ -424,8 +348,7 @@ function NewOrderInner() {
                       </span>
                       <p className="mt-4 font-display text-lg font-semibold text-white">Pick a service</p>
                       <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                        Select a category and service to see quality, delivery speed, refill policy and pricing
-                        details here.
+                        Select a service to review its available description, quantity limits and pricing.
                       </p>
                     </div>
                   ) : (
@@ -440,34 +363,25 @@ function NewOrderInner() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <DetailPill icon={ShieldCheck} label="Quality" value="High Quality" tone="green" />
+                      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+                        <DetailPill icon={Gauge} label="Minimum quantity" value={String(selected.min_quantity)} tone="green" />
+                        <DetailPill icon={Gauge} label="Maximum quantity" value={String(selected.max_quantity)} tone="blue" />
                         <DetailPill
                           icon={Timer}
-                          label="Start Time"
-                          value={selected.completion_time_text || '0–1 Hour'}
-                          tone="red"
-                        />
-                        <DetailPill icon={RefreshCw} label="Refill" value="30 Days" tone="blue" />
-                        <DetailPill
-                          icon={Gauge}
-                          label="Speed"
-                          value={selected.completion_time ? `${selected.completion_time}h` : 'Instant'}
+                          label="Delivery estimate"
+                          value={selected.completion_time_text || (selected.completion_time ? `${selected.completion_time}h` : 'Not provided')}
                           tone="amber"
                         />
                       </div>
 
                       <div className="rounded-xl pf-card-inner p-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Notes
+                          Before you order
                         </p>
-                        <ul className="mt-3 space-y-2 text-xs leading-relaxed text-foreground/80">
-                          <li>• Profile/post must be public while the order is in progress.</li>
-                          <li>• Do not change the username or delete the linked content.</li>
-                          <li>• Average speed and delivery time are estimates based on recent orders.</li>
-                          <li>• Refill guarantee covers unexpected drops within the policy window.</li>
-                          <li>• You can request analytics of delivery speed after completion.</li>
-                        </ul>
+                        <p className="mt-3 text-xs leading-relaxed text-foreground/80">
+                          Check the service description, destination requirements, quantity limits and price before
+                          submitting. Any displayed delivery timing is an estimate and may vary.
+                        </p>
                       </div>
 
                       <div className="rounded-xl border border-primary-500/25 bg-primary-500/[0.08] p-4">

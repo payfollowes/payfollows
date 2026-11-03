@@ -54,11 +54,11 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
     <div className="min-h-screen bg-ink-950">
       <IconSidebar variant={variant} />
 
-      <div className="lg:pl-[84px]">
+      <div className="min-w-0 lg:pl-[84px]">
         <DashboardTopbar variant={variant} />
 
-        <main className="px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-10 lg:pt-6">
-          <div className="mx-auto max-w-[1440px] space-y-5">{children}</div>
+        <main className="min-w-0 px-3 pb-28 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6">
+          <div className="mx-auto min-w-0 max-w-[1440px] space-y-5">{children}</div>
         </main>
       </div>
     </div>

@@ -29,11 +29,29 @@ export default function ServicesPage() {
   }, []);
 
   useEffect(() => {
-    servicesAPI
-      .getMergedServices()
-      .then((rows) => setServices(rows.filter((s) => s.status === 'active' && s.rate_per_1000 > 0)))
-      .catch(() => setServices([]))
-      .finally(() => setLoading(false));
+    let mounted = true;
+    let baseLoaded = false;
+    const apply = (rows: Service[]) => {
+      if (!mounted) return;
+      setServices(rows.filter((s) => s.status === 'active' && s.rate_per_1000 > 0));
+      setLoading(false);
+    };
+
+    // Show the catalog from the main services endpoint immediately; merge
+    // provider metadata/pricing as a background refresh instead of blocking UI.
+    servicesAPI.getServices().then((rows) => {
+      baseLoaded = true;
+      apply(rows);
+    }).catch(() => {
+      baseLoaded = true;
+      if (mounted) setLoading(false);
+    });
+
+    servicesAPI.getMergedServices().then(apply).catch(() => {
+      if (mounted && !baseLoaded) setLoading(false);
+    });
+
+    return () => { mounted = false; };
   }, []);
 
   const filtered = useMemo(() => {

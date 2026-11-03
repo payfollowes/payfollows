@@ -137,8 +137,8 @@ export function DashboardTopbar({ variant }: TopbarProps) {
   const initial = (profile?.username || user?.username || 'U').slice(0, 1).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[rgba(167,139,250,0.10)] bg-ink-950/75 px-4 py-3 backdrop-blur-2xl sm:px-6 lg:px-8">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 border-b border-[rgba(167,139,250,0.10)] bg-ink-950/75 px-3 py-2.5 backdrop-blur-2xl sm:px-6 sm:py-3 lg:px-8">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* Current page title — lives in the topbar instead of repeating above content */}
         <div className="hidden shrink-0 items-center gap-3 md:flex">
           <span className="h-8 w-1.5 rounded-full bg-primary-gradient shadow-glow-xs" />

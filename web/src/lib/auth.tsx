@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from './supabase/client';
 import { authAPI } from './api';
 import type { AppUser, UserProfile } from './types';
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       const p = await authAPI.getUserProfile();
       setProfile(p);
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('[auth] refreshProfile failed', error);
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
