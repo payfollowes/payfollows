@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Wallet, CheckCircle2, XCircle, CreditCard, Smartphone, Bitcoin, Landmark, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { paymentsAPI, walletAPI } from '@/lib/api';
+import { paymentsAPI, walletAPI, type PaymentMethodInfo } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCurrency } from '@/lib/currency';
 import type { BalanceTransaction, Payment } from '@/lib/types';
@@ -41,7 +40,9 @@ function AddFundsInner() {
   const { profile, refreshProfile } = useAuth();
   const { formatAmount } = useCurrency();
   const [method, setMethod] = useState('fastpay');
+  const [methodOptions, setMethodOptions] = useState<PaymentMethodInfo[]>([]);
   const [amount, setAmount] = useState('');
+  const [transactionReference, setTransactionReference] = useState('');
   const [loading, setLoading] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
@@ -72,29 +73,46 @@ function AddFundsInner() {
         map[m.id] = m.available;
       });
       setAvailability(map);
-      // Default to the first configured gateway instead of a disabled tile.
+      setMethodOptions(methods);
+      // Default to the first configured payment option instead of a disabled tile.
       const firstLive = methods.find((m) => m.available);
       if (firstLive) setMethod(firstLive.id);
+      setMethodsLoaded(true);
+    }).catch(() => {
+      setAvailability(FALLBACK_AVAILABILITY);
       setMethodsLoaded(true);
     });
   }, [params, refreshProfile]);
 
   const selectedAvailable = Boolean(availability[method]);
+  const selectedMethod = methodOptions.find((option) => option.id === method);
+  const isManualMethod = selectedMethod?.type === 'manual';
+  const minimumAmount = isManualMethod ? selectedMethod?.minimumAmount ?? 5 : 5;
+  const manualMethods = methodOptions.filter((option) => option.type === 'manual' && option.available);
 
   const amountNum = Number(amount) || 0;
-  const fee = amountNum * 0.02;
+  const fee = isManualMethod ? 0 : amountNum * 0.02;
   const total = amountNum + fee;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (amountNum < 5) return toast.error('Minimum deposit is $5.00');
+    if (amountNum < minimumAmount) return toast.error(`Minimum deposit is $${minimumAmount.toFixed(2)}`);
     if (!profile) return toast.error('Profile not loaded');
     if (!selectedAvailable) {
       return toast.error('This payment method is not available yet — please choose a live gateway.');
     }
 
+    if (isManualMethod && transactionReference.trim().length < 3) return toast.error('Transfer reference / ID enter karein.');
+
     setLoading(true);
     try {
+      if (isManualMethod) {
+        await paymentsAPI.createManualDeposit(amountNum, method, transactionReference.trim());
+        toast.success('Deposit request submit ho gayi. Admin verification ke baad balance update hoga.');
+        setTransactionReference('');
+        await paymentsAPI.getPayments().then(setPayments).catch(() => undefined);
+        return;
+      }
       const payment = await paymentsAPI.createPayment(amountNum, method);
       const gateway = await paymentsAPI.createGatewayOrder(payment, profile, method);
       if (gateway?.paymentUrl || gateway?.payment_url || gateway?.redirect_url || gateway?.url) {
@@ -119,7 +137,7 @@ function AddFundsInner() {
           <CardContent>
             <form onSubmit={submit} className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {METHOD_CATALOG.map((m) => {
+                {METHOD_CATALOG.filter((item) => !manualMethods.some((manual) => manual.id === item.id)).map((m) => {
                   const available = Boolean(availability[m.id]);
                   const active = method === m.id;
                   return (
@@ -154,12 +172,38 @@ function AddFundsInner() {
                     </button>
                   );
                 })}
+                {manualMethods.map((m) => {
+                  const active = method === m.id;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => setMethod(m.id)}
+                      className={cn(
+                        'rounded-2xl border p-4 text-left transition-all',
+                        active ? 'border-primary-500/60 bg-primary-500/10 shadow-glow-sm' : 'border-white/[0.08] bg-white/[0.04] hover:border-white/20'
+                      )}
+                    >
+                      <Smartphone className={cn('h-6 w-6', active ? 'text-primary-400' : 'text-muted-foreground')} />
+                      <p className="mt-3 text-sm font-semibold text-white">{m.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{m.region || 'Manual transfer'}</p>
+                      <p className="mt-1 text-[10px] text-primary-300">Manual verification</p>
+                    </button>
+                  );
+                })}
               </div>
               {methodsLoaded && !Object.values(availability).some(Boolean) && (
                 <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200/90">
-                  No payment gateway is configured yet. Deposits will open as soon as the provider credentials are
-                  added.
+                  Abhi koi payment method available nahi. Admin se rabta karein.
                 </p>
+              )}
+
+              {isManualMethod && selectedMethod && (
+                <div className="space-y-3 rounded-2xl border border-primary-500/20 bg-primary-500/[0.04] p-4">
+                  <div><p className="text-sm font-semibold text-white">{selectedMethod.name} transfer details</p><p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{selectedMethod.instructions}</p></div>
+                  <div className="rounded-xl pf-card-inner p-3 text-sm"><div className="flex justify-between gap-3"><span className="text-muted-foreground">Account name</span><span className="text-right text-white">{selectedMethod.accountName || '—'}</span></div><div className="mt-2 flex justify-between gap-3"><span className="text-muted-foreground">Account / wallet</span><span className="break-all text-right font-mono text-white">{selectedMethod.accountDetails}</span></div></div>
+                  <p className="text-xs text-amber-200/90">Transfer ke baad reference submit karein. Admin verification tak wallet balance update nahi hogi.</p>
+                </div>
               )}
 
               <div className="space-y-2">
@@ -167,7 +211,7 @@ function AddFundsInner() {
                 <Input
                   id="amount"
                   type="number"
-                  min={5}
+                  min={minimumAmount}
                   step="0.01"
                   placeholder="Enter amount"
                   value={amount}
@@ -187,9 +231,13 @@ function AddFundsInner() {
                 </div>
               </div>
 
+              {isManualMethod && (
+                <div className="space-y-2"><Label htmlFor="transaction-reference">Transaction reference / ID</Label><Input id="transaction-reference" required minLength={3} maxLength={100} value={transactionReference} onChange={(event) => setTransactionReference(event.target.value)} placeholder="Bank / wallet transaction reference" /></div>
+              )}
+
               <div className="space-y-2 rounded-2xl pf-card-inner p-5 text-sm">
                 <Row label="Amount" value={formatAmount(amountNum)} />
-                <Row label="Processing fee (2%)" value={formatAmount(fee)} />
+                <Row label={isManualMethod ? 'Processing fee' : 'Processing fee (2%)'} value={formatAmount(fee)} />
                 <div className="my-2 h-px bg-white/10" />
                 <Row label="Total payable" value={formatAmount(total)} bold />
               </div>
@@ -199,9 +247,9 @@ function AddFundsInner() {
                 size="lg"
                 className="w-full"
                 loading={loading}
-                disabled={amountNum < 5 || !selectedAvailable}
+                disabled={amountNum < minimumAmount || !selectedAvailable}
               >
-                <Wallet /> Continue to Payment
+                <Wallet /> {isManualMethod ? 'Submit for verification' : 'Continue to Payment'}
               </Button>
             </form>
           </CardContent>
@@ -213,7 +261,7 @@ function AddFundsInner() {
             <p className="mt-2 font-display text-4xl font-bold gradient-text">{formatAmount(profile?.balance ?? 0)}</p>
             <div className="mt-4 space-y-2 text-xs text-muted-foreground">
               <p className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Funds credited automatically after confirmation
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Online gateways credit after verification; manual transfers need admin review
               </p>
               <p className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-400" /> Minimum deposit: $5.00

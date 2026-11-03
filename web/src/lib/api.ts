@@ -514,6 +514,11 @@ export interface PaymentMethodInfo {
   available: boolean;
   comingSoon?: boolean;
   endpoint?: string;
+  type?: 'gateway' | 'manual';
+  minimumAmount?: number;
+  accountName?: string;
+  accountDetails?: string;
+  instructions?: string;
 }
 
 export const paymentsAPI = {
@@ -540,6 +545,16 @@ export const paymentsAPI = {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw bridgeError(res, payload, 'Could not create payment');
+    return payload?.data?.payment as Payment;
+  },
+
+  async createManualDeposit(amount: number, methodId: string, transactionReference: string): Promise<Payment> {
+    const res = await apiFetch('/api/payments/manual-deposit', {
+      method: 'POST',
+      body: JSON.stringify({ amount, methodId, transactionReference }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw bridgeError(res, payload, 'Could not submit manual deposit');
     return payload?.data?.payment as Payment;
   },
 
@@ -624,6 +639,52 @@ export const announcementAPI = {
 /* ------------------------------------------------------------------ */
 /* Admin                                                               */
 /* ------------------------------------------------------------------ */
+
+export interface ManualPaymentMethodConfig {
+  id: string;
+  name: string;
+  region: string;
+  accountName: string;
+  accountDetails: string;
+  instructions: string;
+  minimumAmount: number;
+  active: boolean;
+  type: 'manual';
+}
+
+export interface PaymentGatewayConfig {
+  id: string;
+  name: string;
+  configured: boolean;
+  enabled: boolean;
+}
+
+export const paymentMethodsAdminAPI = {
+  async getSettings(): Promise<{ methods: ManualPaymentMethodConfig[]; gateways: PaymentGatewayConfig[] }> {
+    const response = await apiFetch('/api/admin/payment-methods');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw bridgeError(response, payload, 'Could not load payment methods');
+    return payload?.data ?? { methods: [], gateways: [] };
+  },
+  async save(methods: ManualPaymentMethodConfig[], fastpayEnabled: boolean) {
+    const response = await apiFetch('/api/admin/payment-methods', {
+      method: 'PUT',
+      body: JSON.stringify({ methods, fastpayEnabled }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw bridgeError(response, payload, 'Could not save payment methods');
+    return payload?.data?.methods ?? methods;
+  },
+  async reviewManualDeposit(paymentId: string, action: 'approve' | 'reject', reason = '') {
+    const response = await apiFetch(`/api/admin/manual-deposits/${encodeURIComponent(paymentId)}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw bridgeError(response, payload, 'Could not review manual deposit');
+    return payload?.data?.payment;
+  },
+};
 
 export const adminAPI = {
   async getDashboardStats() {

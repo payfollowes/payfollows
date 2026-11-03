@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CreditCard, RefreshCw } from 'lucide-react';
+import { CheckCircle2, CreditCard, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,16 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { adminAPI } from '@/lib/api';
+import { adminAPI, paymentMethodsAdminAPI } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import type { Payment } from '@/lib/types';
 import { formatDateTime, truncateMiddle } from '@/lib/utils';
-import { DollarSign, Clock, CheckCircle2 } from 'lucide-react';
+import { DollarSign, Clock } from 'lucide-react';
 
 export default function AdminPaymentsPage() {
   const { formatAmount } = useCurrency();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewingId, setReviewingId] = useState('');
 
   const load = () =>
     adminAPI
@@ -31,6 +32,22 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const reviewManualDeposit = async (payment: Payment, action: 'approve' | 'reject') => {
+    if (action === 'approve' && !window.confirm(`Kya aapne ${formatAmount(payment.amount)} ka transfer verify kar liya hai? Approve karne se wallet credit hogi.`)) return;
+    if (action === 'reject' && !window.confirm('Is manual deposit ko reject karein?')) return;
+    const reason = action === 'reject' ? (window.prompt('Rejection reason (optional):') || '') : '';
+    setReviewingId(payment.id);
+    try {
+      await paymentMethodsAdminAPI.reviewManualDeposit(payment.id, action, reason);
+      toast.success(action === 'approve' ? 'Deposit verify aur wallet credit ho gayi.' : 'Deposit reject kar di gayi.');
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Deposit review nahi ho saki');
+    } finally {
+      setReviewingId('');
+    }
+  };
 
   const completed = payments.filter((p) => p.status === 'completed');
   const pending = payments.filter((p) => p.status === 'pending');
@@ -72,6 +89,7 @@ export default function AdminPaymentsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Transaction</TableHead>
                   <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead>Review</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -98,6 +116,7 @@ export default function AdminPaymentsPage() {
                       {p.transaction_id ? truncateMiddle(p.transaction_id, 18) : '—'}
                     </TableCell>
                     <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{formatDateTime(p.created_at)}</TableCell>
+                    <TableCell>{p.status === 'pending' && p.payment_provider === 'manual' ? <div className="flex gap-1"><Button size="sm" variant="success" disabled={reviewingId === p.id} onClick={() => void reviewManualDeposit(p, 'approve')}><CheckCircle2 />Approve</Button><Button size="sm" variant="ghost" disabled={reviewingId === p.id} onClick={() => void reviewManualDeposit(p, 'reject')}><XCircle className="text-red-400" />Reject</Button></div> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
