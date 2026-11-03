@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../lib/supabaseServer.js';
 import { readAuthCookies } from '../lib/authCookies.js';
 import { successResponse, errorResponse, asyncHandler } from '../lib/apiResponse.js';
 import { validateQuery, validateRequest, validateParams, schemas } from '../lib/validation.js';
-import { requireAuth, requireAdmin } from '../lib/authz.js';
+import { requireAuth, requireActiveAccount, requireAdmin } from '../lib/authz.js';
 import { z } from 'zod';
 
 const router = express.Router();
@@ -71,7 +71,24 @@ function pickStatusNode(result, orderId) {
   return firstKey ? result[firstKey] : result;
 }
 
-async function updateLocalOrder(localOrderId, updates) {
+async function failOrderAndRefund(orderId, reason) {
+  try {
+    const { error } = await supabaseAdmin.rpc('fail_order_and_refund', {
+      p_order_id: orderId,
+      p_reason: String(reason || 'Provider rejected order').slice(0, 500),
+    });
+    if (error) {
+      console.error('[DaoSMM Bridge] Order refund RPC failed', { orderId, code: error.code });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('[DaoSMM Bridge] Order refund RPC threw', { orderId, message: error.message });
+    return false;
+  }
+}
+
+async function updateLocalOrder(localOrderId, updates, userId = null) {
   if (!localOrderId || !supabaseAdmin) return null;
 
   const payload = Object.fromEntries(
@@ -80,10 +97,12 @@ async function updateLocalOrder(localOrderId, updates) {
 
   if (Object.keys(payload).length === 0) return null;
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('orders')
     .update(payload)
-    .eq('id', localOrderId)
+    .eq('id', localOrderId);
+  if (userId) query = query.eq('user_id', userId);
+  const { data, error } = await query
     .select('id, status, provider_id, provider_order_id, start_count, remains')
     .maybeSingle();
 
@@ -240,103 +259,120 @@ router.get('/services', requireAdmin, async (req, res) => {
 
 /**
  * POST /api/provider/add-order
- * Create a new order on provider
- * Body: { provider_id, local_order_id?, service, link, quantity, runs?, interval? }
+ * Only a local order ID is accepted. All service, URL, quantity, provider and
+ * upstream identifiers are taken from the authenticated owner's database row.
  */
-router.post('/add-order', async (req, res) => {
+router.post('/add-order', requireActiveAccount, async (req, res) => {
+  const localOrderId = String(req.body?.local_order_id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(localOrderId)) {
+    return res.status(400).json({ error: 'A valid local_order_id is required.' });
+  }
   try {
-    const { provider_id, local_order_id, service, link, quantity, runs, interval } = req.body;
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .select('id, user_id, service_id, link, quantity, status, provider_id, provider_order_id')
+      .eq('id', localOrderId)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (orderError) throw orderError;
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (order.provider_order_id) {
+      return res.json({ ok: true, order: order.provider_order_id, localOrder: order, idempotent: true });
+    }
+    if (!['pending', 'processing'].includes(String(order.status).toLowerCase())) {
+      return res.status(409).json({ error: 'This order cannot be sent to a provider.' });
+    }
 
-    if (!provider_id || !service || !link || !quantity) {
-      return res.status(400).json({
-        error: 'Missing required fields: provider_id, service, link, quantity',
-      });
+    const { data: mapping, error: mappingError } = await supabaseAdmin
+      .from('provider_services')
+      .select('provider_id, provider_service_id')
+      .eq('service_id', order.service_id)
+      .eq('status', 'active')
+      .gt('our_rate', 0)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (mappingError) throw mappingError;
+    if (!mapping) {
+      const refunded = await failOrderAndRefund(order.id, 'No active provider is mapped to this service.');
+      return res.status(refunded ? 409 : 503).json({ error: refunded
+        ? 'No active provider is mapped to this service; the order was failed and the wallet debit was refunded.'
+        : 'No active provider is mapped to this service, and the refund could not be confirmed. Do not retry; contact support to reconcile the order.' });
     }
 
     const { data: provider, error: providerError } = await supabaseAdmin
       .from('providers')
-      .select('id, name, api_key, api_url')
-      .eq('id', provider_id)
-      .single();
-
-    if (providerError || !provider) {
-      return res.status(404).json({ error: 'Provider not found' });
+      .select('id, name, api_key, api_url, status')
+      .eq('id', mapping.provider_id)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (providerError) throw providerError;
+    if (!provider?.api_key) {
+      const refunded = await failOrderAndRefund(order.id, 'Assigned provider is unavailable.');
+      return res.status(503).json({ error: refunded
+        ? 'The assigned provider is unavailable; the wallet debit was refunded.'
+        : 'The assigned provider is unavailable, and the refund could not be confirmed. Do not retry; contact support to reconcile the order.' });
     }
 
-    if (!provider.api_key) {
-      return res.status(400).json({ error: 'Provider API key not configured' });
+    const { data: claim, error: claimError } = await supabaseAdmin
+      .from('orders')
+      .update({ provider_submission_started_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .eq('user_id', req.user.id)
+      .is('provider_submission_started_at', null)
+      .is('provider_order_id', null)
+      .select('id')
+      .maybeSingle();
+    if (claimError) throw claimError;
+    if (!claim) return res.status(409).json({ error: 'This order is already being submitted or has been submitted.' });
+
+    let result;
+    try {
+      result = await callDaoSMM(provider, {
+        action: 'add',
+        service: String(mapping.provider_service_id),
+        link: String(order.link),
+        quantity: String(order.quantity),
+      });
+    } catch (error) {
+      // A timeout can happen after the provider accepted the request, so do not
+      // refund or retry automatically. Keep the debit and expose a pending state
+      // for operator reconciliation instead of risking a duplicate order.
+      const localOrder = await updateLocalOrder(order.id, { status: 'processing' }, req.user.id);
+      console.warn('[DaoSMM Bridge] Provider response uncertain; order left pending reconciliation', {
+        localOrderId: order.id,
+        message: error.message,
+      });
+      return res.status(202).json({
+        ok: true,
+        pending: true,
+        message: 'Provider confirmation is pending. Do not submit this order again; contact support if it remains pending.',
+        localOrder,
+      });
     }
-
-    const params = {
-      action: 'add',
-      service: String(service),
-      link: String(link),
-      quantity: String(quantity),
-      runs: runs ? String(runs) : undefined,
-      interval: interval ? String(interval) : undefined,
-    };
-
-    const result = await callDaoSMM(provider, params);
     const providerErrorMessage = extractProviderError(result);
-
-    if (providerErrorMessage) {
-      const localOrder = await updateLocalOrder(local_order_id, {
-        provider_id,
-        status: 'failed',
-      });
-
-      return res.status(400).json({
-        error: 'Failed to create order',
-        details: providerErrorMessage,
-        localOrder,
-      });
+    if (providerErrorMessage || !result?.order) {
+      const refunded = await failOrderAndRefund(order.id, providerErrorMessage || 'Provider did not return an order ID.');
+      return res.status(502).json({ error: refunded
+        ? 'Provider could not accept the order. It was marked failed and the wallet debit was refunded.'
+        : 'Provider could not accept the order; please contact support to reconcile the wallet refund.' });
     }
 
-    if (!result?.order) {
-      const localOrder = await updateLocalOrder(local_order_id, {
-        provider_id,
-        status: 'failed',
-      });
-
-      return res.status(502).json({
-        error: 'Failed to create order',
-        details: 'Provider did not return an order ID.',
-        localOrder,
-      });
-    }
-
-    const localOrder = await updateLocalOrder(local_order_id, {
-      provider_id,
+    const localOrder = await updateLocalOrder(order.id, {
+      provider_id: provider.id,
       provider_order_id: String(result.order),
       status: mapProviderStatusToLocal(result.status),
-    });
-
-    console.log('[DaoSMM Bridge] Order created:', {
-      provider: provider.name,
-      orderId: result.order,
-      service,
-      quantity,
-      localOrderId: local_order_id || null,
-    });
-
-    return res.json({
-      ok: true,
-      order: result.order,
-      provider: provider.name,
-      localOrder,
-    });
+    }, req.user.id);
+    if (!localOrder) {
+      // The vendor has accepted an order but ownership-scoped persistence failed.
+      // Alert ops without exposing the vendor response or credentials.
+      console.error('[DaoSMM Bridge] Accepted provider order could not be linked to local order', { localOrderId: order.id });
+      return res.status(503).json({ error: 'Provider accepted the order but its local status could not be saved. Please contact support.' });
+    }
+    return res.json({ ok: true, order: String(result.order), provider: provider.name, localOrder });
   } catch (error) {
-    const { provider_id, local_order_id } = req.body || {};
-    await updateLocalOrder(local_order_id, {
-      provider_id,
-      status: 'failed',
-    });
-
-    console.error('[DaoSMM Bridge] Add order error:', error);
-    return res.status(500).json({
-      error: 'Failed to create order',
-      message: error.message,
-    });
+    console.error('[DaoSMM Bridge] Add order error:', { localOrderId, message: error.message });
+    return res.status(502).json({ error: 'Could not submit this order to its assigned provider.' });
   }
 });
 

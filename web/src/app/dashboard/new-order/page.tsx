@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -14,6 +15,8 @@ import {
   Gauge,
   Timer,
   Sparkles,
+  AlertTriangle,
+  ArrowUpRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -36,7 +39,7 @@ import { PlatformBrandIcon } from '@/components/shared/platform-icon';
 import { ordersAPI, servicesAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCurrency } from '@/lib/currency';
-import type { Service } from '@/lib/types';
+import type { Order, Service } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 function NewOrderInner() {
@@ -53,8 +56,24 @@ function NewOrderInner() {
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [orderNeedsReview, setOrderNeedsReview] = useState<Order | null>(null);
 
   const preselectedServiceId = params.get('service');
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let active = true;
+    ordersAPI.getOrders().then((orders) => {
+      if (!active) return;
+      const unresolved = orders.find((order) =>
+        ['pending', 'processing'].includes(order.status) && !order.provider_order_id
+      );
+      if (unresolved) setOrderNeedsReview(unresolved);
+    }).catch((error) => {
+      console.warn('[NewOrder] Could not check unresolved orders before checkout', error);
+    });
+    return () => { active = false; };
+  }, [profile?.id]);
 
   useEffect(() => {
     let active = true;
@@ -130,6 +149,9 @@ function NewOrderInner() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (orderNeedsReview) {
+      return toast.error(`Order #${orderNeedsReview.id} needs review first. Please check Order History before placing another.`);
+    }
     if (!selected) return toast.error('Please select a service');
     if (!link.trim()) return toast.error('Please enter your content link');
     if (!quantityValid)
@@ -137,29 +159,53 @@ function NewOrderInner() {
     if ((profile?.balance ?? 0) < charge) return toast.error('Insufficient balance — please add funds first');
 
     setSubmitting(true);
+    let savedOrder: Order | null = null;
     try {
       const providerLink = await servicesAPI.resolveProviderLink(selected.id);
       if (!providerLink) throw new Error('This service is temporarily unavailable for ordering.');
 
-      const order = await ordersAPI.createOrder(
+      savedOrder = await ordersAPI.createOrder(
         selected.id,
         link.trim(),
         qty,
         selected.completion_time ?? 24
       );
-      const providerResult = await ordersAPI.placeWithProvider(order.id);
+      const providerResult = await ordersAPI.placeWithProvider(savedOrder.id);
       if (providerResult?.pending) {
-        toast.info('Order saved; provider confirmation is pending. Do not place it again.');
+        setOrderNeedsReview({ ...savedOrder, status: 'processing' });
+        toast.info(`Order #${savedOrder.id} is saved; provider confirmation is pending. Do not place it again.`);
       } else {
-        toast.success(`Order placed! Charge: ${formatAmount(order.charge)}`);
+        toast.success(`Order placed! Charge: ${formatAmount(savedOrder.charge)}`);
       }
       await refreshProfile();
       setLink('');
       setQuantity('');
       setServiceId('');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not place order');
-      void refreshProfile();
+      if (!savedOrder) {
+        toast.error(error instanceof Error ? error.message : 'Could not place order');
+        void refreshProfile();
+        return;
+      }
+
+      // The wallet debit and local order are committed before provider dispatch.
+      // Re-read the order so a definite refund is distinguished from an uncertain
+      // provider response; never encourage the customer to repeat a charged order.
+      let latestOrder: Order | undefined;
+      try {
+        await refreshProfile();
+        latestOrder = (await ordersAPI.getOrders()).find((order) => order.id === savedOrder?.id);
+      } catch (refreshError) {
+        console.warn('[NewOrder] Could not reconcile provider submission result', refreshError);
+      }
+
+      if (latestOrder && ['failed', 'canceled'].includes(latestOrder.status)) {
+        toast.error(`Order #${savedOrder.id} was marked ${latestOrder.status}. Its wallet refund was processed; check your balance before trying again.`);
+      } else {
+        const unresolved = latestOrder || { ...savedOrder, status: 'processing' as const };
+        setOrderNeedsReview(unresolved);
+        toast.error(`Order #${savedOrder.id} was charged and saved, but provider acceptance is not confirmed. Do not place it again; check Order History or contact support.`);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -219,6 +265,22 @@ function NewOrderInner() {
         </TabsList>
 
         <TabsContent value="order">
+          {orderNeedsReview && (
+            <div role="alert" className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/[0.08] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-100">Order #{orderNeedsReview.id} needs confirmation</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-100/75">
+                    This order is saved but has no confirmed provider order ID. Don’t place it again until its status is resolved.
+                  </p>
+                </div>
+              </div>
+              <Link href="/dashboard/orders" className="inline-flex shrink-0 items-center gap-1 self-start text-sm font-semibold text-amber-200 hover:text-white sm:self-center">
+                View Order History <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
+          )}
           {loading ? (
             <div className="grid gap-6 xl:grid-cols-2">
               <Skeleton className="h-[460px]" />
@@ -329,7 +391,7 @@ function NewOrderInner() {
                         size="lg"
                         loading={submitting}
                         className="sm:px-10"
-                        disabled={!selected}
+                        disabled={!selected || Boolean(orderNeedsReview)}
                       >
                         <ShoppingCart /> Buy Service
                       </Button>
