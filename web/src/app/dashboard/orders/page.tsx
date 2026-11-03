@@ -361,14 +361,26 @@ export default function OrdersPage() {
                                   )}
                                 </div>
                               </div>
-                              <a
-                                href={order.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200"
-                              >
-                                Open order link <ExternalLink className="h-3 w-3" />
-                              </a>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <a
+                                  href={order.link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200"
+                                >
+                                  Open order link <ExternalLink className="h-3 w-3" />
+                                </a>
+                                {!order.provider_order_id && (order.status === 'pending' || order.status === 'processing') && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 border-amber-500/30 text-xs text-amber-200 hover:text-amber-100"
+                                    onClick={() => window.location.assign(`/dashboard/support?orderId=${encodeURIComponent(order.id)}`)}
+                                  >
+                                    <LifeBuoy className="mr-1 h-3.5 w-3.5" /> Contact support about this order
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </TableCell>
