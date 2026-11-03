@@ -172,6 +172,7 @@ export interface Payment {
   status: PaymentStatus;
   fastpay_order_id: string | null;
   created_at: string;
+  metadata?: Record<string, any> | null;
   user?: { username: string; email: string };
 }
 
