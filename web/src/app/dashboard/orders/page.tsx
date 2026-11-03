@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle, Droplets, Eye, ChevronDown, ChevronUp, Clock3, LifeBuoy } from 'lucide-react';
+import { ClipboardList, RefreshCw, ExternalLink, Search, Undo2, XCircle, Droplets, Eye, ChevronDown, ChevronUp, Clock3, LifeBuoy, Pencil } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +56,11 @@ function formatEta(order: Order, now = Date.now()) {
   ].filter(Boolean).join(' ');
 
   return delta > 0 ? `About ${duration} left` : `Estimate passed ${duration} ago`;
+}
+
+function orderSupportHref(order: Order, action: 'status' | 'edit' = 'status') {
+  const params = new URLSearchParams({ orderId: order.id, action });
+  return `/dashboard/support?${params.toString()}`;
 }
 
 export default function OrdersPage() {
@@ -124,11 +129,14 @@ export default function OrdersPage() {
   };
 
   const cancel = async (order: Order) => {
-    if (!window.confirm('Cancel this order at the provider? Refund, if eligible, is handled by support.')) return;
+    const confirmation = order.is_dripfeed
+      ? 'Cancel this drip-feed order at the provider? Any refund, if eligible, is handled by support.'
+      : 'Cancel this order at the provider? Any refund, if eligible, is handled by support.';
+    if (!window.confirm(confirmation)) return;
     setActionId(order.id);
     try {
       await ordersAPI.cancelOrder(order);
-      toast.success('Cancellation requested');
+      toast.success(order.is_dripfeed ? 'Drip-feed cancellation requested' : 'Cancellation requested');
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Cancel failed');
@@ -188,6 +196,148 @@ export default function OrdersPage() {
               </p>
             </div>
           ) : (
+            <>
+            <div className="space-y-3 p-3 md:hidden">
+              {filtered.map((order) => {
+                const style = statusStyle(order.status);
+                const progress = getOrderProgress(order);
+                const eta = formatEta(order);
+                const isExpanded = expandedOrderId === order.id;
+                const active = order.status === 'pending' || order.status === 'processing';
+                return (
+                  <article key={order.id} className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-semibold leading-5 text-white">{order.service?.name || order.service_id}</p>
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">{truncateMiddle(order.id, 18)}</p>
+                      </div>
+                      <Badge variant="outline" className={`${style.className} shrink-0`}>{style.label}</Badge>
+                    </div>
+
+                    {order.is_dripfeed && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-2 py-1 text-[11px] font-semibold text-sky-300">
+                        <Droplets className="h-3.5 w-3.5" />
+                        Dripfeed · {order.runs_delivered ?? 0}/{order.runs ?? 0} runs
+                      </span>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-white/10 bg-black/10 p-3">
+                        <p className="text-[11px] text-muted-foreground">Quantity</p>
+                        <p className="mt-1 text-sm font-semibold text-white">{progress.quantity.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-black/10 p-3">
+                        <p className="text-[11px] text-muted-foreground">Charge</p>
+                        <p className="mt-1 text-sm font-semibold text-white">{formatAmount(order.charge)}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{progress.delivered === null ? 'Progress not synced' : `${progress.percent}% complete`}</span>
+                        <span className="font-medium text-white">{progress.delivered === null ? '—' : `${progress.delivered.toLocaleString()} / ${progress.quantity.toLocaleString()}`}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width: `${progress.percent}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-emerald-300">Delivered: {progress.delivered === null ? '—' : progress.delivered.toLocaleString()}</span>
+                        <span className="text-muted-foreground">Remaining: {progress.remaining === null ? '—' : progress.remaining.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 rounded-xl bg-violet-500/[0.07] p-3">
+                      <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Estimated time</p>
+                        <p className="mt-0.5 text-xs text-violet-100">
+                          {order.status === 'completed'
+                            ? 'Completed — no time remaining'
+                            : order.status === 'canceled' || order.status === 'failed'
+                              ? 'Order is no longer active'
+                              : !order.provider_order_id
+                                ? 'Waiting for provider confirmation'
+                                : eta || 'Provider ne ETA share nahi ki'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <a
+                      href={order.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex max-w-full items-center gap-1 text-xs text-violet-300 hover:text-violet-200"
+                    >
+                      <span className="truncate">{order.link}</span><ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+
+                    <div className="grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
+                      {order.provider_order_id && active && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-red-500/30 text-xs text-red-300 hover:text-red-200"
+                          loading={actionId === order.id}
+                          onClick={() => cancel(order)}
+                        >
+                          <XCircle className="mr-1 h-3.5 w-3.5" /> {order.is_dripfeed ? 'Cancel drip' : 'Cancel'}
+                        </Button>
+                      )}
+                      {order.provider_order_id && order.status === 'completed' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-primary-500/30 text-xs text-primary-300 hover:text-primary-200"
+                          loading={actionId === order.id}
+                          onClick={() => refill(order)}
+                        >
+                          <Undo2 className="mr-1 h-3.5 w-3.5" /> Refill
+                        </Button>
+                      )}
+                      {!order.provider_order_id && active && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-amber-500/30 text-xs text-amber-200 hover:text-amber-100"
+                          onClick={() => window.location.assign(orderSupportHref(order))}
+                        >
+                          <LifeBuoy className="mr-1 h-3.5 w-3.5" /> Help
+                        </Button>
+                      )}
+                      {active && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-violet-500/30 text-xs text-violet-200 hover:text-violet-100"
+                          onClick={() => window.location.assign(orderSupportHref(order, 'edit'))}
+                        >
+                          <Pencil className="mr-1 h-3.5 w-3.5" /> Request edit
+                        </Button>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-full text-xs text-muted-foreground"
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                    >
+                      {isExpanded ? 'Hide extra details' : 'More details'}
+                      {isExpanded ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+                    </Button>
+                    {isExpanded && (
+                      <div className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-black/10 p-3 text-xs">
+                        <div><p className="text-muted-foreground">Starting count</p><p className="mt-1 font-medium text-white">{order.start_count == null ? '—' : Number(order.start_count).toLocaleString()}</p></div>
+                        <div><p className="text-muted-foreground">Date placed</p><p className="mt-1 font-medium text-white">{formatDateTime(order.created_at)}</p></div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -272,7 +422,7 @@ export default function OrdersPage() {
                               size="sm"
                               className="h-8 border-amber-500/30 text-xs text-amber-200 hover:text-amber-100"
                               aria-label={`Contact support about order ${order.id}`}
-                              onClick={() => window.location.assign(`/dashboard/support?orderId=${encodeURIComponent(order.id)}`)}
+                              onClick={() => window.location.assign(orderSupportHref(order))}
                             >
                               <LifeBuoy className="mr-1 h-3.5 w-3.5" /> Help
                             </Button>
@@ -286,7 +436,7 @@ export default function OrdersPage() {
                                 loading={actionId === order.id}
                                 onClick={() => cancel(order)}
                               >
-                                <XCircle className="mr-1 h-3.5 w-3.5" /> Cancel
+                                <XCircle className="mr-1 h-3.5 w-3.5" /> {order.is_dripfeed ? 'Cancel drip' : 'Cancel'}
                               </Button>
                             )}
                           {order.provider_id && order.provider_order_id && order.status === 'completed' && (
@@ -298,6 +448,16 @@ export default function OrdersPage() {
                               onClick={() => refill(order)}
                             >
                               <Undo2 className="mr-1 h-3.5 w-3.5" /> Refill
+                            </Button>
+                          )}
+                          {(order.status === 'pending' || order.status === 'processing') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs text-violet-300 hover:text-violet-200"
+                              onClick={() => window.location.assign(orderSupportHref(order, 'edit'))}
+                            >
+                              <Pencil className="mr-1 h-3.5 w-3.5" /> Request edit
                             </Button>
                           )}
                         </div>
@@ -391,6 +551,8 @@ export default function OrdersPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

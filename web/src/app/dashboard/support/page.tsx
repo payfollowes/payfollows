@@ -57,11 +57,15 @@ export default function SupportPage() {
   }, []);
 
   useEffect(() => {
-    const orderId = new URLSearchParams(window.location.search).get('orderId')?.trim();
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId')?.trim();
     if (!orderId) return;
-    setSubject(`Order status check: ${orderId}`);
+    const isEditRequest = params.get('action') === 'edit';
+    setSubject(`${isEditRequest ? 'Order edit request' : 'Order status check'}: ${orderId}`);
     setMessage(
-      `Please check order ${orderId}. It is showing as pending while waiting for provider confirmation. Please confirm whether it was accepted and advise if any further action is needed.`
+      isEditRequest
+        ? `I would like to request a change to order ${orderId}. Please confirm whether it can still be edited and let me know what changes are possible before applying anything.`
+        : `Please check order ${orderId}. It is showing as pending while waiting for provider confirmation. Please confirm whether it was accepted and advise if any further action is needed.`
     );
     setOpen(true);
   }, []);
