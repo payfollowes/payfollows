@@ -37,7 +37,7 @@ const TYPE_COLOR: Record<NotificationType, string> = {
 
 const POLL_MS = 45_000;
 
-export function NotificationBell() {
+export function NotificationBell({ className }: { className?: string }) {
   const router = useRouter();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -106,7 +106,7 @@ export function NotificationBell() {
     <DropdownMenu open={open} onOpenChange={(v) => { setOpen(v); if (v) void refresh(); }}>
       <DropdownMenuTrigger
         aria-label="Notifications"
-        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-muted-foreground transition-all hover:text-foreground"
+        className={cn('relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-muted-foreground transition-all hover:text-foreground', className)}
       >
         <Bell className="h-[18px] w-[18px]" />
         {unread > 0 && (

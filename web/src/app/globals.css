@@ -773,6 +773,10 @@
   box-shadow: 0 20px 44px -26px rgba(0, 0, 0, 0.95);
 }
 
+.mobile-action-nav {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 @media (max-width: 639px) {
   .landing-page-thread {
     display: none;
