@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockSupabase = vi.hoisted(() => ({ from: vi.fn() }));
+const mockSupabase = vi.hoisted(() => ({ auth: { getUser: vi.fn() }, from: vi.fn() }));
 const mockSupabaseAdmin = vi.hoisted(() => ({ from: vi.fn() }));
 
 vi.mock('../lib/supabaseServer.js', () => ({
@@ -46,7 +46,7 @@ function dispatchProviderServices() {
       url: '/provider-services',
       method: 'GET',
       query: {},
-      headers: {},
+      headers: { authorization: 'Bearer test-session' },
       body: {},
       params: {},
       validatedQuery: {},
@@ -66,6 +66,7 @@ function dispatchProviderServices() {
 
 describe('admin service write invalidation', () => {
   beforeEach(() => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'test-user' } }, error: null });
     providerServicesQueryQueue = [];
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});

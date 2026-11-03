@@ -10,7 +10,20 @@ vi.mock('../lib/supabaseServer.js', () => ({
 }));
 
 import { globalCache } from '../lib/cache.js';
-import publicServicesRouter from './publicServices.js';
+import publicServicesRouter, { filterAndSortPublicServices } from './publicServices.js';
+
+describe('customer storefront service selection', () => {
+  it('hides disabled or unpriced services and orders the rest by admin rank', () => {
+    const services = filterAndSortPublicServices([
+      { id: 'later', name: 'Later', category: 'Instagram', rate_per_1000: 1, display_order: 20 },
+      { id: 'hidden', name: 'Hidden', category: 'Instagram', rate_per_1000: 1, is_visible_to_users: false, display_order: -10 },
+      { id: 'first', name: 'First', category: 'Instagram', rate_per_1000: 1, is_visible_to_users: true, display_order: -1 },
+      { id: 'unpriced', name: 'Unpriced', category: 'Instagram', rate_per_1000: 0, display_order: -20 },
+    ]);
+
+    expect(services.map((service) => service.id)).toEqual(['first', 'later']);
+  });
+});
 
 describe('public services catalog caching', () => {
   beforeEach(() => {

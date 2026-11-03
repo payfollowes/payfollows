@@ -132,3 +132,43 @@ Phase 4 — Deploy
 - Configure environment variables for the target platform.
 - Run a production build.
 - Validate health checks, auth flows, and payment flow smoke tests.
+
+## 9. Rebuild execution status (updated 2026-10-25)
+
+Next.js 15 rebuild (`web/`) on the separate `payfollows-web` Vercel project,
+reusing Supabase project `irzbtrujbxmkudnmdpig`; the legacy Express app remains
+the API backend on `payfollows.vercel.app`.
+
+P0 — shipped and live
+- Wallet hardening: atomic `place_order` / `refund_order` / `credit_deposit`
+  RPCs, balance ledger, sensitive-field guard trigger, RLS pass.
+- Admin authorization gates with tests; provider import/refill/cancel/sync
+  hardening; 6-decimal catalog pricing (6,433 sellable services).
+
+P1 — shipped and live
+- Margin management UI + CRUD + admin guard and round-trip tests; unauthenticated
+  toast-flash on `/admin/margins` fixed via soft-fail provider lookup.
+- Reseller API v2: `POST /api/v2/action` with API-key auth, actions
+  `balance | services | add | status | refill | cancel`, SMM-panel JSON
+  contract, service-role `place_order_for_user` RPC, self-service key rotation
+  (`regenerate_api_key`) wired into the dashboard API console; 14 router tests.
+- Password recovery: `/forgot-password`, PKCE `/auth/callback`,
+  `/update-password`, login entry point; Supabase redirect allow list already
+  covers the callback via wildcard entries.
+- Payment honesty: `GET /api/payments/methods` capability map; the add-funds
+  page only enables configured gateways (FastPay live, PayFast when
+  credentials exist) and shows the rest as "Coming soon" instead of silently
+  routing every choice to FastPay; 3 capability tests.
+
+P1 — still open
+- Additional real gateways (Stripe/PayPal/crypto/EasyPaisa) require merchant
+  credentials; server scaffolding for PayFast exists and lights up automatically
+  once `PAYFAST_*` env vars are set.
+
+P2 — backlog
+- Drip-feed UI, notifications center, referral program, child panels, live chat,
+  admin settings/financial screens, audit logs.
+
+P3 — backlog
+- SEO polish, onboarding tour, rate limiting/CAPTCHA, broader test coverage,
+  legacy/new codebase consolidation.

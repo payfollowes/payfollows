@@ -272,8 +272,7 @@ export const useOrderManagement = () => {
     async (
       service: Service,
       orderData: OrderData,
-      profile: UserProfile,
-      onPaymentRequired?: (amount: number) => Promise<void>
+      profile: UserProfile
     ): Promise<OrderResult> => {
       setLoading(true);
       setError('');
@@ -287,7 +286,7 @@ export const useOrderManagement = () => {
           throw new Error(validation.error || 'Validation failed');
         }
 
-        const charge = calculateCharge(service, orderData.quantity, orderData.deliveryTime);
+        let charge = calculateCharge(service, orderData.quantity, orderData.deliveryTime);
 
         console.log('[OrderManagement] Creating order:', {
           service: service.name,
@@ -325,9 +324,11 @@ export const useOrderManagement = () => {
         );
 
         console.log('[OrderManagement] Order created successfully:', createdOrder);
+        charge = Number(createdOrder.charge);
         persistedStatus = normalizeOrderStatus(createdOrder.status);
 
         // Step 4: Send order to provider (if mapped)
+        let providerPending = false;
         try {
           const providerResp = await fetch('/api/provider/add-order', {
             method: 'POST',
@@ -342,7 +343,11 @@ export const useOrderManagement = () => {
           });
           const providerData = await providerResp.json();
 
-          if (providerResp.ok && providerData?.order) {
+          if (providerResp.ok && providerData?.pending) {
+            providerPending = true;
+            persistedStatus = 'processing';
+            setError(providerData.message || 'Provider confirmation is pending. Do not submit this order again.');
+          } else if (providerResp.ok && providerData?.order) {
             providerOrderId = String(providerData.order);
             persistedStatus = normalizeOrderStatus(
               providerData?.localOrder?.status || 'processing'
@@ -391,16 +396,6 @@ export const useOrderManagement = () => {
         // Step 5: Refresh profile/balance state
         await executeWithRetry(async () => authAPI.getUserProfile());
 
-        // Step 6: Handle payment if needed and callback provided
-        if (charge > 0 && onPaymentRequired) {
-          try {
-            console.log('[OrderManagement] Initiating payment:', charge);
-            await onPaymentRequired(charge);
-          } catch (paymentErr) {
-            console.warn('[OrderManagement] Payment initiation failed:', paymentErr);
-            // Order was created, payment can be retried later
-          }
-        }
 
         // Step 7: Set success state
         const result: OrderResult = {
@@ -412,11 +407,15 @@ export const useOrderManagement = () => {
           quantity: orderData.quantity,
           estimatedCompletionHours: orderData.deliveryTime,
           createdAt: createdOrder.created_at ?? null,
-          message: 'Order created and sent to provider.',
+          message: providerPending
+            ? 'Order is saved; provider confirmation is pending. Do not place it again.'
+            : 'Order created and sent to provider.',
         };
 
         setOrderStatus(result);
-        setSuccess(`Order #${createdOrder.id} created! Charge: ${charge.toFixed(2)} USD`);
+        setSuccess(providerPending
+          ? `Order #${createdOrder.id} saved. Provider confirmation is pending; do not place it again.`
+          : `Order #${createdOrder.id} created! Charge: ${charge.toFixed(2)} USD`);
 
         // Step 8: Check status periodically (provider-first if available)
         checkOrderStatus(
@@ -453,8 +452,7 @@ export const useOrderManagement = () => {
     async (
       service: Service,
       orderData: OrderData,
-      profile: UserProfile,
-      onPaymentRequired?: (amount: number) => Promise<void>
+      profile: UserProfile
     ): Promise<OrderResult> => {
       retryCountRef.current += 1;
       console.log('[OrderManagement] Retry attempt:', retryCountRef.current);
@@ -469,7 +467,7 @@ export const useOrderManagement = () => {
         };
       }
 
-      return createOrder(service, orderData, profile, onPaymentRequired);
+      return createOrder(service, orderData, profile);
     },
     [createOrder]
   );

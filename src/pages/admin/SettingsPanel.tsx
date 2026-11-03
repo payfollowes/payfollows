@@ -225,49 +225,10 @@ insert into app_settings (id, config) values ('default', '{}'::jsonb) on conflic
             </div>
           </div>
 
-          <div className="md:col-span-2">
-            <h3 className="font-semibold">Payment Gateway Keys</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 6H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-                <input
-                  id="settings-fastpay-api-key"
-                  name="fastpayApiKey"
-                  className="w-full bg-black/20 border border-brand-border rounded-lg p-2 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none text-sm"
-                  placeholder="FastPay API Key"
-                  value={(settings as any)?.payment?.fastpayApiKey || ''}
-                  onChange={e => setSettings(prev => ({ ...(prev || {}), payment: { ...((prev as any)?.payment || {}), fastpayApiKey: e.target.value } }))}
-                />
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 7L9 19L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-                <input
-                  id="settings-stripe-secret"
-                  name="stripeSecret"
-                  className="w-full bg-black/20 border border-brand-border rounded-lg p-2 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none text-sm"
-                  placeholder="Stripe Secret"
-                  value={(settings as any)?.payment?.stripeSecret || ''}
-                  onChange={e => setSettings(prev => ({ ...(prev || {}), payment: { ...((prev as any)?.payment || {}), stripeSecret: e.target.value } }))}
-                />
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 6H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-                <input
-                  id="settings-paypal-client-id"
-                  name="paypalClientId"
-                  className="w-full bg-black/20 border border-brand-border rounded-lg p-2 pl-10 focus:ring-2 focus:ring-brand-purple focus:outline-none text-sm"
-                  placeholder="PayPal Client ID"
-                  value={(settings as any)?.payment?.paypalClientId || ''}
-                  onChange={e => setSettings(prev => ({ ...(prev || {}), payment: { ...((prev as any)?.payment || {}), paypalClientId: e.target.value } }))}
-                />
-              </div>
-            </div>
+          <div className="md:col-span-2 rounded-xl border border-brand-border bg-black/10 p-4">
+            <h3 className="font-semibold">Payment integrations</h3>
+            <p className="mt-1 text-sm text-gray-400">Payment methods, manual transfer details, aur gateway visibility ko dedicated section se manage karein. Gateway secret keys ko app settings mein save na karein.</p>
+            <a href="#/admin/payment-methods" className="mt-3 inline-flex rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-2 text-sm font-medium text-violet-200 hover:bg-violet-500/20">Open Payment Methods</a>
           </div>
 
           <div>

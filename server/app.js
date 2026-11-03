@@ -26,9 +26,10 @@ const corsOptions = {
       return;
     }
 
-    const isAllowed = allowedOrigins.length === 0
-      ? origin === 'http://localhost:3000' || origin === 'http://localhost:5173' || origin.endsWith('.vercel.app')
-      : allowedOrigins.includes(origin);
+    const isLocalDevOrigin = origin === 'http://localhost:3000' || origin === 'http://localhost:5173';
+    const isAllowed = allowedOrigins.length > 0
+      ? allowedOrigins.includes(origin)
+      : process.env.NODE_ENV !== 'production' && isLocalDevOrigin;
 
     if (isAllowed) {
       callback(null, true);
@@ -142,6 +143,7 @@ async function registerRoutes() {
     { default: adminRouter, startProviderSyncScheduler },
     { default: paymentsRouter },
     { default: providerRouter },
+    { default: resellerRouter },
   ] = await Promise.all([
     import('./routes/auth.js'),
     import('./routes/services.js'),
@@ -152,6 +154,7 @@ async function registerRoutes() {
     import('./routes/admin.js'),
     import('./routes/payments.js'),
     import('./routes/provider.js'),
+    import('./routes/reseller.js'),
   ]);
 
   app.use('/api/auth', authRouter);
@@ -164,6 +167,7 @@ async function registerRoutes() {
   app.use('/api/admin', adminRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/provider', providerRouter);
+  app.use('/api/v2', resellerRouter);
 
   // Periodic re-sync of provider services (picks up newly published completion times).
   startProviderSyncScheduler();

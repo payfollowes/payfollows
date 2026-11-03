@@ -6,9 +6,19 @@ const router = express.Router();
 const PAGE_SIZE = 1000;
 const MAX_ROWS = 50000;
 
+export function filterAndSortPublicServices(services) {
+  return services
+    .filter((service) => service.is_visible_to_users !== false && Number(service.rate_per_1000) > 0)
+    .sort((a, b) => {
+      const orderDifference = Number(a.display_order ?? 0) - Number(b.display_order ?? 0);
+      if (orderDifference !== 0) return orderDifference;
+      const categoryDifference = String(a.category || '').localeCompare(String(b.category || ''));
+      return categoryDifference || String(a.name || '').localeCompare(String(b.name || ''));
+    });
+}
+
 /**
- * Fetch active services for public consumption
- * Only returns services with status='active'
+ * Fetch active, priced services marked visible for public consumption
  */
 async function fetchPublicServicesFromDB() {
   if (!supabaseConfigured || !supabase) {
@@ -33,7 +43,9 @@ async function fetchPublicServicesFromDB() {
     if (page.length < PAGE_SIZE) break;
   }
 
-  return allServices;
+  // Visibility and ordering are also applied in application code so the catalog
+  // remains safe and deterministic while an additive database migration rolls out.
+  return filterAndSortPublicServices(allServices);
 }
 
 /**
@@ -135,7 +147,7 @@ router.get('/:id', async (req, res) => {
       return res.status(500).json({ error: error.message || 'Failed to load service' });
     }
 
-    if (!data) {
+    if (!data || data.is_visible_to_users === false || Number(data.rate_per_1000) <= 0) {
       return res.status(404).json({ error: 'Service not found' });
     }
 

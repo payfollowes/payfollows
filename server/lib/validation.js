@@ -2,14 +2,22 @@ import { z } from 'zod';
 
 // Common field schemas
 export const schemas = {
-  // Payment schemas
+  // Payment values are validated and calculated by the server. The browser may
+  // only refer to its own pending payment row when starting a gateway session.
+  createPaymentSchema: z.object({
+    amount: z.number().finite().min(5).max(10000),
+    paymentMethod: z.enum(['fastpay']),
+  }),
+  gatewayOrderSchema: z.object({
+    paymentId: z.string().uuid('Invalid payment ID format'),
+  }),
   createOrderSchema: z.object({
     paymentId: z.string().uuid('Invalid payment ID format'),
-    amount: z.number().positive('Amount must be positive').finite('Amount must be a valid number'),
-    customerEmail: z.string().email('Invalid email format'),
-    customerName: z.string().min(1, 'Customer name is required').max(100, 'Customer name too long'),
-    returnUrl: z.string().url('Invalid return URL'),
-    cancelUrl: z.string().url('Invalid cancel URL'),
+    amount: z.number().positive().finite(),
+    customerEmail: z.string().email(),
+    customerName: z.string().min(1).max(100),
+    returnUrl: z.string().url(),
+    cancelUrl: z.string().url(),
   }),
 
   // Admin schemas

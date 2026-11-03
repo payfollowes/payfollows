@@ -14,7 +14,10 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run start:server\"",
     "create-admin": "node scripts/create_admin_user.js",
     "check-config": "node scripts/check_config.js",
-    "test": "vitest"
+    "test": "vitest",
+    "e2e:smoke": "node tests/e2e/smoke.mjs",
+    "e2e:app": "node tests/e2e/app.mjs",
+    "e2e:sweep": "node tests/e2e/sweep.mjs"
   },
   "dependencies": {
     "@fontsource/space-grotesk": "^5.2.10",
@@ -32,6 +35,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^153.0.0",
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^15.0.0",
     "@testing-library/react-hooks": "^8.0.0",
@@ -49,7 +53,10 @@
     "tailwindcss": "^3.4.17",
     "terser": "^5.44.1",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "vitest": "^0.34.0"
+    "vite": "^6.4.5",
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "qs": "^6.17.1"
   }
 }

@@ -22,6 +22,8 @@ const loadAdminPage = (page: string) => {
             return lazy(() => import('./admin/OrderManagement'));
         case 'payments':
             return lazy(() => import('./admin/PaymentLogs'));
+        case 'payment-methods':
+            return lazy(() => import('./admin/PaymentMethods'));
         case 'support':
             return lazy(() => import('./admin/SupportTickets'));
         case 'announcements':
