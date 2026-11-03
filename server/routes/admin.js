@@ -19,6 +19,13 @@ router.use((req, res, next) =>
   req.path.startsWith('/cron/') ? next() : requireAdmin(req, res, next)
 );
 
+// The web admin writes service rows directly through Supabase, so explicitly
+// invalidate the server-side catalog snapshots after visibility/order edits.
+router.post('/services/cache/invalidate', (_req, res) => {
+  invalidateServiceCaches();
+  return res.json({ success: true });
+});
+
 const MAX_DECIMAL_10_2 = 99999999.99;
 const MAX_INT32 = 2147483647;
 

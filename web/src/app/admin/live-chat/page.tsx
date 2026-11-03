@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleDot, Loader2, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, CircleDot, Loader2, MessageSquare } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MessageComposer } from '@/components/chat/message-composer';
 import { chatAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { ChatChannel, ChatMessage } from '@/lib/types';
@@ -247,19 +248,16 @@ export default function AdminLiveChatPage() {
           </CardContent>
 
           {active && (
-            <form onSubmit={send} className="flex flex-col gap-2 border-t border-white/[0.07] p-3 sm:flex-row sm:gap-3 sm:p-4">
-              <input
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={active.status === 'closed' ? 'Reopen this conversation to reply' : 'Reply as support…'}
-                maxLength={2000}
-                disabled={active.status === 'closed'}
-                className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-muted-foreground focus:border-primary-500/50 focus:outline-none disabled:opacity-60 sm:h-12 sm:rounded-2xl"
-              />
-              <Button type="submit" loading={sending} disabled={!body.trim() || active.status === 'closed'} className="w-full shrink-0 sm:w-auto">
-                <Send /> Reply
-              </Button>
-            </form>
+            <MessageComposer
+              value={body}
+              onChange={setBody}
+              onSubmit={send}
+              sending={sending}
+              disabled={active.status === 'closed'}
+              placeholder={active.status === 'closed' ? 'Reopen this conversation to reply' : 'Write a reply…'}
+              inputLabel={`Reply to ${userName}`}
+              actionLabel="Reply"
+            />
           )}
         </Card>
       </div>

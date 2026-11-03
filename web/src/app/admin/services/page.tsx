@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { adminAPI } from '@/lib/api';
+import { adminAPI, servicesAPI } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import type { Service } from '@/lib/types';
 
@@ -32,6 +32,8 @@ type FormState = {
   max_quantity: string;
   completion_time: string;
   status: 'active' | 'inactive';
+  is_visible_to_users: boolean;
+  display_order: string;
 };
 
 const EMPTY: FormState = {
@@ -43,6 +45,8 @@ const EMPTY: FormState = {
   max_quantity: '10000',
   completion_time: '24',
   status: 'active',
+  is_visible_to_users: true,
+  display_order: '0',
 };
 
 export default function AdminServicesPage() {
@@ -54,17 +58,68 @@ export default function AdminServicesPage() {
   const [editing, setEditing] = useState<Service | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [orderDrafts, setOrderDrafts] = useState<Record<string, string>>({});
 
   const load = () =>
     adminAPI
       .getAllServices()
-      .then(setServices)
+      .then((rows) => {
+        setServices(rows);
+        setOrderDrafts({});
+      })
       .catch(() => toast.error('Failed to load services'))
       .finally(() => setLoading(false));
 
   useEffect(() => {
     void load();
   }, []);
+
+  const refreshPublicCatalog = async () => {
+    servicesAPI.clearCatalogCache();
+    const refreshed = await adminAPI.invalidateServiceCatalogCache();
+    if (!refreshed) {
+      toast.info('Saved. Customer catalog refresh may take up to 10 minutes.');
+    }
+  };
+
+  const saveStorefrontSetting = async (
+    service: Service,
+    updates: Pick<Partial<Service>, 'is_visible_to_users' | 'display_order'>
+  ) => {
+    const previous = {
+      is_visible_to_users: service.is_visible_to_users !== false,
+      display_order: service.display_order ?? 0,
+    };
+    const next = { ...previous, ...updates };
+    setServices((rows) => rows.map((row) => row.id === service.id ? { ...row, ...next } : row));
+    if (updates.display_order !== undefined) {
+      setOrderDrafts((drafts) => ({ ...drafts, [service.id]: String(updates.display_order) }));
+    }
+
+    try {
+      await adminAPI.updateService(service.id, updates);
+      await refreshPublicCatalog();
+      toast.success(updates.is_visible_to_users !== undefined
+        ? (updates.is_visible_to_users ? 'Service shown to customers' : 'Service hidden from customers')
+        : 'Display order updated');
+    } catch (err) {
+      setServices((rows) => rows.map((row) => row.id === service.id ? { ...row, ...previous } : row));
+      setOrderDrafts((drafts) => ({ ...drafts, [service.id]: String(previous.display_order) }));
+      toast.error(err instanceof Error ? err.message : 'Could not update storefront settings');
+    }
+  };
+
+  const commitDisplayOrder = async (service: Service) => {
+    const raw = orderDrafts[service.id] ?? String(service.display_order ?? 0);
+    const value = Number(raw);
+    if (!Number.isInteger(value) || Math.abs(value) > 1_000_000) {
+      setOrderDrafts((drafts) => ({ ...drafts, [service.id]: String(service.display_order ?? 0) }));
+      toast.error('Display order must be a whole number from -1,000,000 to 1,000,000');
+      return;
+    }
+    if (value === (service.display_order ?? 0)) return;
+    await saveStorefrontSetting(service, { display_order: value });
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -83,6 +138,8 @@ export default function AdminServicesPage() {
       max_quantity: String(s.max_quantity),
       completion_time: String(s.completion_time ?? 24),
       status: s.status,
+      is_visible_to_users: s.is_visible_to_users !== false,
+      display_order: String(s.display_order ?? 0),
     });
     setDialogOpen(true);
   };
@@ -99,10 +156,13 @@ export default function AdminServicesPage() {
       max_quantity: Number(form.max_quantity),
       completion_time: Number(form.completion_time),
       status: form.status,
+      is_visible_to_users: form.is_visible_to_users,
+      display_order: Number(form.display_order) || 0,
     };
     try {
       if (editing) await adminAPI.updateService(editing.id, payload);
       else await adminAPI.createService(payload as Omit<Service, 'id'>);
+      await refreshPublicCatalog();
       toast.success(editing ? 'Service updated' : 'Service created');
       setDialogOpen(false);
       void load();
@@ -117,6 +177,7 @@ export default function AdminServicesPage() {
     if (!window.confirm(`Delete service "${s.name}"?`)) return;
     try {
       await adminAPI.deleteService(s.id);
+      await refreshPublicCatalog();
       toast.success('Service deleted');
       void load();
     } catch (err) {
@@ -183,6 +244,17 @@ export default function AdminServicesPage() {
                   />
                   <Label>Active</Label>
                 </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={form.is_visible_to_users}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_visible_to_users: v }))}
+                  />
+                  <Label>Visible to customers</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Display order <span className="text-muted-foreground">(lower comes first)</span></Label>
+                  <Input type="number" step="1" value={form.display_order} onChange={set('display_order')} />
+                </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Description</Label>
                   <Textarea rows={3} value={form.description} onChange={set('description')} placeholder="Customer-facing service description" />
@@ -211,6 +283,8 @@ export default function AdminServicesPage() {
                   <TableHead>Rate / 1K</TableHead>
                   <TableHead className="hidden md:table-cell">Range</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Customer visibility</TableHead>
+                  <TableHead>Order</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -229,6 +303,30 @@ export default function AdminServicesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={s.status === 'active' ? 'success' : 'secondary'}>{s.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={s.is_visible_to_users !== false}
+                          aria-label={`${s.is_visible_to_users === false ? 'Show' : 'Hide'} ${s.name} ${s.is_visible_to_users === false ? 'to' : 'from'} customers`}
+                          onCheckedChange={(checked) => void saveStorefrontSetting(s, { is_visible_to_users: checked })}
+                        />
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
+                          {s.is_visible_to_users === false ? 'Hidden' : 'Visible'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="1"
+                        aria-label={`Display order for ${s.name}`}
+                        value={orderDrafts[s.id] ?? String(s.display_order ?? 0)}
+                        onChange={(event) => setOrderDrafts((drafts) => ({ ...drafts, [s.id]: event.target.value }))}
+                        onBlur={() => void commitDisplayOrder(s)}
+                        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                        className="h-9 w-24"
+                      />
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">

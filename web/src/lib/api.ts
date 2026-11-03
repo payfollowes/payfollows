@@ -722,6 +722,15 @@ export const adminAPI = {
     if (error) throw error;
   },
 
+  async invalidateServiceCatalogCache(): Promise<boolean> {
+    try {
+      const response = await apiFetch('/api/admin/services/cache/invalidate', { method: 'POST' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
   async getAllOrders(): Promise<Order[]> {
     const { data, error } = await runQuery(
       supabase

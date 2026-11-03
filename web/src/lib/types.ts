@@ -127,6 +127,10 @@ export interface Service {
   completion_time?: number | null;
   completion_time_text?: string | null;
   time_pricing?: Record<string, number> | null;
+  /** Whether the service is listed in customer-facing catalogs. */
+  is_visible_to_users: boolean;
+  /** Lower values appear earlier in customer-facing catalogs. */
+  display_order: number;
   status: 'active' | 'inactive';
 }
 

@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageSquare, Send, Loader2, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Loader2, ShieldCheck } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MessageComposer } from '@/components/chat/message-composer';
 import { chatAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { ChatChannel, ChatMessage } from '@/lib/types';
@@ -150,19 +150,16 @@ export default function UserLiveChatPage() {
           <div ref={bottomRef} />
         </CardContent>
 
-        <form onSubmit={send} className="flex flex-col gap-2 border-t border-white/[0.07] p-3 sm:flex-row sm:gap-3 sm:p-4">
-          <input
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={channel?.status === 'closed' ? 'This conversation is closed' : 'Type your message…'}
-            maxLength={2000}
-            disabled={!channel || channel.status === 'closed'}
-            className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-muted-foreground focus:border-primary-500/50 focus:outline-none disabled:opacity-60 sm:h-12 sm:rounded-2xl"
-          />
-          <Button type="submit" size="lg" loading={sending} disabled={!body.trim() || !channel || channel.status === 'closed'} className="w-full shrink-0 sm:w-auto">
-            <Send /> Send
-          </Button>
-        </form>
+        <MessageComposer
+          value={body}
+          onChange={setBody}
+          onSubmit={send}
+          sending={sending}
+          disabled={!channel || channel.status === 'closed'}
+          placeholder={channel?.status === 'closed' ? 'This conversation is closed' : 'Write a message…'}
+          inputLabel="Message to PayFollows Support"
+          actionLabel="Send"
+        />
       </Card>
     </DashboardShell>
   );
