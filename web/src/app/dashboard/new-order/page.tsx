@@ -318,11 +318,11 @@ function NewOrderInner() {
                           {serviceOptions.map((s) => {
                             const keptSelection = s.id === selected?.id && !selectedInCurrentFilter;
                             return (
-                              <SelectItem key={s.id} value={s.id} className="min-w-0">
-                                <span className="flex w-full min-w-0 items-center gap-2">
-                                  <span className="shrink-0 font-semibold text-primary-300">{formatAmount(s.rate_per_1000)}/1K</span>
-                                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                                  {keptSelection && <span className="max-w-24 shrink-0 truncate text-[10px] text-primary-300">Current selection</span>}
+                              <SelectItem key={s.id} value={s.id} className="items-start py-3">
+                                <span className="flex w-full min-w-0 flex-col items-start gap-1 pr-1">
+                                  <span className="text-[11px] font-semibold text-primary-300">{formatAmount(s.rate_per_1000)}/1K</span>
+                                  <span className="block w-full whitespace-normal break-words text-xs leading-relaxed text-white">{s.name}</span>
+                                  {keptSelection && <span className="text-[10px] text-primary-300">Current selection</span>}
                                 </span>
                               </SelectItem>
                             );
