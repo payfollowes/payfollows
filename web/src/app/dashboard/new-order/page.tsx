@@ -298,7 +298,7 @@ function NewOrderInner() {
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a category" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-80">
+                        <SelectContent>
                           {categories.map((c) => (
                             <SelectItem key={c} value={c}>
                               {c}
@@ -314,14 +314,16 @@ function NewOrderInner() {
                         <SelectTrigger>
                           <SelectValue placeholder="Select a service" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-96">
+                        <SelectContent>
                           {serviceOptions.map((s) => {
                             const keptSelection = s.id === selected?.id && !selectedInCurrentFilter;
                             return (
-                              <SelectItem key={s.id} value={s.id}>
-                                <span className="mr-2 font-semibold text-primary-300">{formatAmount(s.rate_per_1000)}/1K</span>
-                                {s.name.length > 70 ? `${s.name.slice(0, 70)}…` : s.name}
-                                {keptSelection && <span className="ml-2 text-[10px] text-primary-300">Current selection</span>}
+                              <SelectItem key={s.id} value={s.id} className="min-w-0">
+                                <span className="flex w-full min-w-0 items-center gap-2">
+                                  <span className="shrink-0 font-semibold text-primary-300">{formatAmount(s.rate_per_1000)}/1K</span>
+                                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                                  {keptSelection && <span className="max-w-24 shrink-0 truncate text-[10px] text-primary-300">Current selection</span>}
+                                </span>
                               </SelectItem>
                             );
                           })}
