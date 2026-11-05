@@ -83,14 +83,14 @@ export default function AdminOverviewPage() {
               orders.slice(0, 6).map((order) => {
                 const style = statusStyle(order.status);
                 return (
-                  <div key={order.id} className="flex items-center justify-between gap-3 rounded-xl pf-card-inner px-4 py-3">
+                  <div key={order.id} className="flex min-w-0 flex-col gap-2 rounded-xl pf-card-inner px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-white">{order.service?.name || order.service_id}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="break-words text-sm font-medium text-white">{order.service?.name || order.service_id}</p>
+                      <p className="break-words text-xs text-muted-foreground">
                         {order.user?.username || truncateMiddle(order.user_id, 10)} · {formatDateTime(order.created_at)}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:shrink-0 sm:flex-nowrap">
                       <span className="text-sm font-semibold">{formatAmount(order.charge)}</span>
                       <Badge variant="outline" className={style.className}>{style.label}</Badge>
                     </div>
@@ -121,9 +121,9 @@ export default function AdminOverviewPage() {
                 .slice(0, 5)
                 .map((t) => (
                   <div key={t.id} className="rounded-xl pf-card-inner p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-white">{t.subject}</p>
-                      <Badge variant="info" className="capitalize shrink-0">{t.status.replace('-', ' ')}</Badge>
+                    <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="min-w-0 break-words text-sm font-semibold text-white">{t.subject}</p>
+                      <Badge variant="info" className="shrink-0 capitalize">{t.status.replace('-', ' ')}</Badge>
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{t.message}</p>
                   </div>

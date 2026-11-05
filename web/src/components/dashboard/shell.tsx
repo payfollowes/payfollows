@@ -58,7 +58,7 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
         <DashboardTopbar variant={variant} />
 
         <main className="min-w-0 px-3 pb-28 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6">
-          <div className="mx-auto min-w-0 max-w-[1440px] space-y-5">{children}</div>
+          <div className="dashboard-content mx-auto min-w-0 max-w-[1440px] space-y-5">{children}</div>
         </main>
       </div>
     </div>

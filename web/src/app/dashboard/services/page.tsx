@@ -90,7 +90,7 @@ export default function ServicesPage() {
       <div className="relative">
         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search thousands of services…"
+          placeholder="Search services…"
           className="pl-11"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

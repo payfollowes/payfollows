@@ -138,34 +138,59 @@ export default function ReferralsPage() {
                   No referrals yet — share your link to start earning.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {referred.map((u) => {
-                      const rewarded = rewards.some((r) => r.referred_id === u.id);
+                <>
+                  <div className="hidden sm:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead>Joined</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {referred.map((u) => {
+                          const rewarded = rewards.some((r) => r.referred_id === u.id);
+                          return (
+                            <TableRow key={u.id}>
+                              <TableCell>
+                                <p className="font-semibold text-white">{u.username}</p>
+                                <p className="text-xs text-muted-foreground">{u.email}</p>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{formatDateTime(u.created_at)}</TableCell>
+                              <TableCell>
+                                <Badge variant={rewarded ? 'success' : 'warning'}>
+                                  {rewarded ? 'Rewarded' : 'Pending first deposit'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 sm:hidden">
+                    {referred.map((user) => {
+                      const rewarded = rewards.some((reward) => reward.referred_id === user.id);
                       return (
-                        <TableRow key={u.id}>
-                          <TableCell>
-                            <p className="font-semibold text-white">{u.username}</p>
-                            <p className="text-xs text-muted-foreground">{u.email}</p>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{formatDateTime(u.created_at)}</TableCell>
-                          <TableCell>
-                            <Badge variant={rewarded ? 'success' : 'warning'}>
+                        <article key={user.id} className="rounded-xl pf-card-inner p-4">
+                          <div className="flex min-w-0 items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="break-words text-sm font-semibold text-white">{user.username}</p>
+                              <p className="mt-0.5 break-all text-xs text-muted-foreground">{user.email}</p>
+                            </div>
+                            <Badge variant={rewarded ? 'success' : 'warning'} className="shrink-0">
                               {rewarded ? 'Rewarded' : 'Pending first deposit'}
                             </Badge>
-                          </TableCell>
-                        </TableRow>
+                          </div>
+                          <p className="mt-3 border-t border-white/10 pt-2 text-xs text-muted-foreground">
+                            Joined {formatDateTime(user.created_at)}
+                          </p>
+                        </article>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

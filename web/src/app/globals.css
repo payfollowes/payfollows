@@ -106,6 +106,19 @@
     backdrop-filter: blur(20px);
   }
 
+  /* Dashboard grids often contain long tables, links and status labels. Let
+     panels shrink to the viewport so their own scroll regions—not the page—
+     handle wide content on phones. */
+  .dashboard-content,
+  .dashboard-content > *,
+  .dashboard-content .grid > * {
+    min-width: 0;
+  }
+
+  .pf-card {
+    min-width: 0;
+  }
+
   .pf-card-elevated {
     border-radius: 1.25rem;
     border: 1px solid rgba(167, 139, 250, 0.2);
@@ -2124,3 +2137,17 @@
 .landing-reference-floating-help:hover { transform:translateY(-3px); box-shadow:0 18px 42px -16px rgba(0,0,0,.8),0 0 35px -10px rgba(124,58,237,.95); }
 @media (max-width:640px) { .landing-reference-floating-help { right:1rem; bottom:1rem; min-height:2.8rem; padding:.68rem .85rem; } }
 @media (prefers-reduced-motion:reduce) { .landing-reference-floating-help { transition:none; } }
+
+/* Keep the long landing page easy to scan: the previous 80–96px padding on
+   every section stacked into oversized gaps, especially on phones. */
+.landing-page > section:not(:first-of-type) {
+  padding-top: 4rem !important;
+  padding-bottom: 4rem !important;
+}
+
+@media (max-width: 640px) {
+  .landing-page > section:not(:first-of-type) {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+  }
+}

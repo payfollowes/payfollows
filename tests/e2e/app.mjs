@@ -99,7 +99,7 @@ async function suite(role) {
       assert('child balance visible', body2.includes('18.25'));
       await page.getByRole('button', { name: /fund/i }).first().click();
       await page.waitForSelector('text=Confirm transfer');
-      await page.locator('input[type="number"]').last().fill('10');
+      await page.locator('input[type="number"]:visible').last().fill('10');
       await page.getByRole('button', { name: 'Confirm transfer' }).click();
       const transfer = await waitForMutation((m) => m.rpc === 'transfer_to_child');
       assert('transfer_to_child RPC called with amount', transfer?.body?.p_amount === 10, JSON.stringify(transfer?.body));
@@ -109,7 +109,7 @@ async function suite(role) {
       await goto('/dashboard/live-chat');
       await page.waitForSelector('text=When will my drip order finish?');
       assert('user chat history renders', await page.locator('text=run 3 goes out').count());
-      await page.locator('input[placeholder*="message" i]').fill('Thanks, that helps!');
+      await page.locator('textarea[placeholder*="message" i]').fill('Thanks, that helps!');
       await page.getByRole('button', { name: /send/i }).click();
       const sent = await waitForMutation((m) => m.table === 'chat_messages');
       assert('chat insert carries user role', sent?.body?.sender_role === 'user', JSON.stringify(sent?.body));
@@ -117,7 +117,7 @@ async function suite(role) {
 
       /* -------------------------------------------------------- New order */
       await goto('/dashboard/new-order');
-      await page.waitForSelector('text=Drip-feed delivery', { timeout: 15_000 });
+      await page.waitForSelector('text=Category', { timeout: 15_000 });
       // Catalog loads async — pick a category first, then the first service.
       const categoryBox = page.locator('[role="combobox"]').nth(0);
       await categoryBox.click();
@@ -130,15 +130,11 @@ async function suite(role) {
       await wait(300);
       await page.locator('#link').fill('https://instagram.com/p/test-post');
       await page.locator('#qty').fill('5000');
-      // Enable drip
-      await page.locator('button[role="switch"]').first().click();
-      await page.locator('#runs').fill('5');
-      await page.locator('#interval').fill('60');
-      await wait(300);
-      const orderText = await page.locator('body').innerText();
-      assert('drip split preview renders', orderText.includes('5,000') && orderText.includes('5') && /runs?/i.test(orderText));
-      assert('drip per-run math shown', orderText.includes('1,000'));
-      await shot('15-new-order-drip.png');
+      const orderText = await page.locator('main').innerText();
+      assert('selected service details and limits render', orderText.includes('Instagram Real Followers') && orderText.includes('Min 50'));
+      assert('order total recalculates from quantity', orderText.includes('$12.00'));
+      assert('unresolved order blocks duplicate checkout', (await page.locator('main [role="alert"]').innerText()).includes('needs confirmation') && await page.getByRole('button', { name: /buy service/i }).isDisabled());
+      await shot('15-new-order.png');
 
       /* ----------------------------------------------------------- Orders */
       await goto('/dashboard/orders');
@@ -257,7 +253,7 @@ async function suite(role) {
       await page.waitForSelector('text=child_panel');
       await page.locator('button', { hasText: 'child_panel' }).first().click();
       await wait(600);
-      await page.locator('input[placeholder*="reply" i]').fill('Looking into it now.');
+      await page.locator('textarea[placeholder*="reply" i]').fill('Looking into it now.');
       await page.getByRole('button', { name: /reply/i }).click();
       const adminMsg = await waitForMutation((m) => m.table === 'chat_messages');
       assert('admin chat insert role=admin', adminMsg?.body?.sender_role === 'admin', JSON.stringify(adminMsg?.body));
