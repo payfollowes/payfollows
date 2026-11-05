@@ -91,21 +91,3 @@ node tests/e2e/smoke.mjs https://payfollows-web.vercel.app   # live URL mode
   post-hydration via `[data-reveal]` (see `web/src/components/shared/reveal.tsx`
   and globals.css), so SSR/no-JS markup is always visible and framer-motion
   `whileInView` opacity traps can never blank a section.
-
-## Interactive live-browser QA (Playwright MCP)
-
-The repository includes a VS Code workspace MCP config at
-`.vscode/mcp.json`. Open the project in VS Code and start/restart the
-**playwright** MCP server from the MCP tools picker. It uses Microsoft's
-`@playwright/mcp` pinned at `0.0.84`, launches a headless browser at
-1440×900, and returns accessibility snapshots with element bounds. Resize the
-browser for mobile QA or navigate to a reachable preview/production URL to
-inspect the live UI. MCP captures are written under the gitignored
-`tests/e2e/artifacts/mcp/` directory; URL query values for `access_token`,
-`code`, and `token` are redacted in tool responses.
-
-This is for exploratory, interactive QA. Keep the deterministic offline E2E
-suites above as the repeatable regression checks; they use their own browser
-bootstrap and local Supabase stub. The MCP server starts through `npx` and
-fetches the pinned package from npm on first use. Do not put account passwords,
-service keys, or storage-state files in the checked-in workspace config.
