@@ -140,7 +140,7 @@ export default function ApiPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            All requests are POST (form-urlencoded or JSON) to <code className="text-primary-300">{ACTION_URL}</code>.
+            All requests are POST (form-urlencoded or JSON) to <code className="break-all text-primary-300">{ACTION_URL}</code>.
             Every request must include your <code className="text-primary-300">key</code>. Order and service ids are
             UUIDs, exactly as returned by the API.
           </p>

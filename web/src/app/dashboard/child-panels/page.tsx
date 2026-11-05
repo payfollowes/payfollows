@@ -123,7 +123,7 @@ export default function ChildPanelsPage() {
                 Anyone who registers with your panel link becomes your child account. You can fund their wallet and
                 monitor every order they place.
               </p>
-              <code className="block truncate rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-xs text-emerald-300">
+              <code className="block min-w-0 break-all rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-xs leading-relaxed text-emerald-300 selection:bg-primary-500/40">
                 {inviteLink || '—'}
               </code>
               <Button variant="secondary" className="w-full" onClick={copyLink} disabled={!inviteLink}>
@@ -183,95 +183,175 @@ export default function ChildPanelsPage() {
                 No child accounts yet. Share your invite link to get started.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Spent</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {children.map((child) => (
-                    <Fragment key={child.id}>
+              <>
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell>
-                          <p className="font-semibold text-white">{child.username}</p>
-                          <p className="text-xs text-muted-foreground">{child.email}</p>
-                          <Badge variant="secondary" className="mt-1 capitalize">
-                            {child.status || 'active'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold text-primary-300">{formatAmount(child.balance)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatAmount(child.total_spent)}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => toggleOrders(child.id)}>
-                              {expanded === child.id ? <ChevronUp /> : <ChevronDown />} Orders
-                            </Button>
-                            <Button size="sm" onClick={() => { setTransferFor(child.id); setTransferAmount(''); }}>
-                              <Send /> Fund
-                            </Button>
-                          </div>
-                        </TableCell>
+                        <TableHead>Account</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead>Spent</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                      {transferFor === child.id && (
-                        <TableRow>
-                          <TableCell colSpan={4}>
-                            <div className="flex flex-col gap-3 rounded-xl border border-primary-500/25 bg-primary-500/[0.06] p-4 sm:flex-row sm:items-end">
-                              <div className="flex-1 space-y-1.5">
-                                <Label>Amount to transfer to {child.username}</Label>
-                                <Input
-                                  type="number"
-                                  min="0.01"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  value={transferAmount}
-                                  onChange={(e) => setTransferAmount(e.target.value)}
-                                />
+                    </TableHeader>
+                    <TableBody>
+                      {children.map((child) => (
+                        <Fragment key={child.id}>
+                          <TableRow>
+                            <TableCell>
+                              <p className="font-semibold text-white">{child.username}</p>
+                              <p className="text-xs text-muted-foreground">{child.email}</p>
+                              <Badge variant="secondary" className="mt-1 capitalize">
+                                {child.status || 'active'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold text-primary-300">{formatAmount(child.balance)}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{formatAmount(child.total_spent)}</TableCell>
+                            <TableCell>
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="secondary" onClick={() => toggleOrders(child.id)}>
+                                  {expanded === child.id ? <ChevronUp /> : <ChevronDown />} Orders
+                                </Button>
+                                <Button size="sm" onClick={() => { setTransferFor(child.id); setTransferAmount(''); }}>
+                                  <Send /> Fund
+                                </Button>
                               </div>
-                              <Button onClick={() => transfer(child.id)}>Confirm transfer</Button>
-                              <Button variant="ghost" onClick={() => setTransferFor(null)}>
-                                Cancel
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+                          </TableRow>
+                          {transferFor === child.id && (
+                            <TableRow>
+                              <TableCell colSpan={4}>
+                                <div className="flex flex-col gap-3 rounded-xl border border-primary-500/25 bg-primary-500/[0.06] p-4 sm:flex-row sm:items-end">
+                                  <div className="flex-1 space-y-1.5">
+                                    <Label>Amount to transfer to {child.username}</Label>
+                                    <Input
+                                      type="number"
+                                      min="0.01"
+                                      step="0.01"
+                                      placeholder="0.00"
+                                      value={transferAmount}
+                                      onChange={(e) => setTransferAmount(e.target.value)}
+                                    />
+                                  </div>
+                                  <Button onClick={() => transfer(child.id)}>Confirm transfer</Button>
+                                  <Button variant="ghost" onClick={() => setTransferFor(null)}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {expanded === child.id && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="bg-white/[0.02]">
+                                {childOrders[child.id]?.length ? (
+                                  <ul className="space-y-2">
+                                    {childOrders[child.id].map((o) => (
+                                      <li key={o.id} className="flex items-center justify-between gap-3 text-xs">
+                                        <span className="truncate text-muted-foreground">
+                                          {o.service?.name ?? o.service_id} · {o.quantity} qty
+                                        </span>
+                                        <span className="flex items-center gap-3">
+                                          <span className="font-semibold text-white">{formatAmount(o.charge)}</span>
+                                          <Badge
+                                            variant="outline"
+                                            className={cn('capitalize', statusStyle(o.status).className)}
+                                          >
+                                            {o.status}
+                                          </Badge>
+                                          <span className="text-muted-foreground/70">{formatDateTime(o.created_at)}</span>
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="py-2 text-center text-xs text-muted-foreground">No orders from this account.</p>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="space-y-3 p-4 md:hidden">
+                  {children.map((child) => (
+                    <article key={child.id} className="rounded-xl pf-card-inner p-4">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-white">{child.username}</p>
+                          <p className="break-all text-xs text-muted-foreground">{child.email}</p>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 capitalize">
+                          {child.status || 'active'}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3 rounded-lg bg-black/15 p-3 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Balance</p>
+                          <p className="mt-1 font-semibold text-primary-300">{formatAmount(child.balance)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Spent</p>
+                          <p className="mt-1 font-semibold text-white">{formatAmount(child.total_spent)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button size="sm" variant="secondary" className="min-h-11 w-full min-w-0" onClick={() => toggleOrders(child.id)}>
+                          {expanded === child.id ? <ChevronUp /> : <ChevronDown />} Orders
+                        </Button>
+                        <Button size="sm" className="min-h-11 w-full min-w-0" onClick={() => { setTransferFor(child.id); setTransferAmount(''); }}>
+                          <Send /> Fund
+                        </Button>
+                      </div>
+                      {transferFor === child.id && (
+                        <div className="mt-3 space-y-3 border-t border-white/10 pt-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`mobile-transfer-${child.id}`}>Amount to transfer</Label>
+                            <Input
+                              id={`mobile-transfer-${child.id}`}
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={transferAmount}
+                              onChange={(e) => setTransferAmount(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button size="sm" className="min-h-11 w-full" onClick={() => transfer(child.id)}>Confirm</Button>
+                            <Button size="sm" variant="ghost" className="min-h-11 w-full" onClick={() => setTransferFor(null)}>Cancel</Button>
+                          </div>
+                        </div>
                       )}
                       {expanded === child.id && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="bg-white/[0.02]">
-                            {childOrders[child.id]?.length ? (
-                              <ul className="space-y-2">
-                                {childOrders[child.id].map((o) => (
-                                  <li key={o.id} className="flex items-center justify-between gap-3 text-xs">
-                                    <span className="truncate text-muted-foreground">
-                                      {o.service?.name ?? o.service_id} · {o.quantity} qty
-                                    </span>
-                                    <span className="flex items-center gap-3">
-                                      <span className="font-semibold text-white">{formatAmount(o.charge)}</span>
-                                      <Badge
-                                        variant="outline"
-                                        className={cn('capitalize', statusStyle(o.status).className)}
-                                      >
-                                        {o.status}
-                                      </Badge>
-                                      <span className="text-muted-foreground/70">{formatDateTime(o.created_at)}</span>
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="py-2 text-center text-xs text-muted-foreground">No orders from this account.</p>
-                            )}
-                          </TableCell>
-                        </TableRow>
+                        <div className="mt-3 border-t border-white/10 pt-3">
+                          {childOrders[child.id]?.length ? (
+                            <ul className="space-y-2">
+                              {childOrders[child.id].map((order) => (
+                                <li key={order.id} className="flex min-w-0 items-start justify-between gap-3 text-xs">
+                                  <span className="min-w-0 break-words text-muted-foreground">
+                                    {order.service?.name ?? order.service_id} · {order.quantity} qty
+                                  </span>
+                                  <span className="shrink-0 text-right">
+                                    <span className="block font-semibold text-white">{formatAmount(order.charge)}</span>
+                                    <Badge variant="outline" className={cn('mt-1 capitalize', statusStyle(order.status).className)}>
+                                      {order.status}
+                                    </Badge>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-center text-xs text-muted-foreground">No orders from this account.</p>
+                          )}
+                        </div>
                       )}
-                    </Fragment>
+                    </article>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
