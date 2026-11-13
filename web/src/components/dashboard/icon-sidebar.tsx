@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Globe2, LogOut, MoreHorizontal, Plus, Settings, UserRound, Wallet } from 'lucide-react';
+import { ClipboardList, Globe2, LogOut, MoreHorizontal, Plus, Settings, MessageSquare, Wallet } from 'lucide-react';
 import { LogoMark } from '@/components/shared/logo';
-import { NotificationBell } from './notification-bell';
 import {
   Tooltip,
   TooltipContent,
@@ -183,14 +182,21 @@ export function IconSidebar({ variant }: IconSidebarProps) {
             <Wallet className="h-[21px] w-[21px]" strokeWidth={1.8} />
           </Link>
           <span aria-hidden="true" className="h-11" />
-          <NotificationBell className="mx-auto !h-11 !w-11 !rounded-2xl !border-0 !bg-transparent !text-muted-foreground hover:!bg-white/[0.06] hover:!text-white" />
           <Link
-            href={settingsHref}
-            aria-label="Profile and settings"
-            aria-current={pathname === settingsHref ? 'page' : undefined}
-            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', pathname === settingsHref ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
+            href="/dashboard/live-chat"
+            aria-label="Live chat"
+            aria-current={isActive(pathname, USER_NAV[7], 'user') ? 'page' : undefined}
+            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', isActive(pathname, USER_NAV[7], 'user') ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
           >
-            <UserRound className="h-[21px] w-[21px]" strokeWidth={1.8} />
+            <MessageSquare className="h-[21px] w-[21px]" strokeWidth={1.8} />
+          </Link>
+          <Link
+            href="/dashboard/orders"
+            aria-label="Orders"
+            aria-current={isActive(pathname, USER_NAV[2], 'user') ? 'page' : undefined}
+            className={cn('flex h-11 items-center justify-center rounded-2xl transition-colors', isActive(pathname, USER_NAV[2], 'user') ? 'bg-primary-500/15 text-primary-300' : 'text-muted-foreground hover:bg-white/[0.06] hover:text-white')}
+          >
+            <ClipboardList className="h-[21px] w-[21px]" strokeWidth={1.8} />
           </Link>
           <Link
             href="/dashboard/new-order"

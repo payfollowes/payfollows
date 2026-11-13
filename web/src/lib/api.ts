@@ -87,6 +87,9 @@ async function runQuery<T>(operation: PromiseLike<T>, label: string) {
   return withSupabaseTimeout(operation, label, SUPABASE_QUERY_TIMEOUT_MS);
 }
 
+const SUPABASE_PAGE_SIZE = 1000;
+const MAX_SERVICE_CATALOG_ROWS = 50_000;
+
 /* ------------------------------------------------------------------ */
 /* Provider services snapshot (cached, resilient)                      */
 /* ------------------------------------------------------------------ */
@@ -275,20 +278,36 @@ async function loadServiceCatalog(): Promise<Service[]> {
   if (!serviceCatalogRequest) {
     const generation = serviceCatalogGeneration;
     const request = (async () => {
-      const { data, error } = await runQuery(
-        supabase
-          .from('services')
-          .select('*')
-          .eq('status', 'active')
-          .eq('is_visible_to_users', true)
-          .gt('rate_per_1000', 0)
-          .order('display_order', { ascending: true })
-          .order('category', { ascending: true })
-          .order('name', { ascending: true }),
-        'public services catalog'
+      const buildCatalogQuery = () => supabase
+        .from('services')
+        .select('*', { count: 'exact' })
+        .eq('status', 'active')
+        .eq('is_visible_to_users', true)
+        .gt('rate_per_1000', 0)
+        .order('display_order', { ascending: true })
+        .order('category', { ascending: true })
+        .order('name', { ascending: true })
+        .order('id', { ascending: true });
+      const first = await runQuery(
+        buildCatalogQuery().range(0, SUPABASE_PAGE_SIZE - 1),
+        'public services catalog page 1'
       );
-      if (error) throw error;
-      return (Array.isArray(data) ? data : []) as Service[];
+      if (first.error) throw first.error;
+      const firstPage = Array.isArray(first.data) ? first.data as Service[] : [];
+      const boundedCount = Math.min(first.count ?? firstPage.length, MAX_SERVICE_CATALOG_ROWS);
+      const offsets = Array.from(
+        { length: Math.max(0, Math.ceil(boundedCount / SUPABASE_PAGE_SIZE) - 1) },
+        (_, index) => (index + 1) * SUPABASE_PAGE_SIZE
+      );
+      const remainingPages = await Promise.all(offsets.map(async (offset) => {
+        const result = await runQuery(
+          buildCatalogQuery().range(offset, offset + SUPABASE_PAGE_SIZE - 1),
+          `public services catalog page ${Math.floor(offset / SUPABASE_PAGE_SIZE) + 1}`
+        );
+        if (result.error) throw result.error;
+        return Array.isArray(result.data) ? result.data as Service[] : [];
+      }));
+      return firstPage.concat(...remainingPages);
     })();
     serviceCatalogRequest = request;
     request.then(
@@ -444,6 +463,19 @@ export const ordersAPI = {
     );
     if (error) throw error;
     return data as Order[];
+  },
+
+  async countOrders(): Promise<number> {
+    const user = await getAuthenticatedUser();
+    const { count, error } = await runQuery(
+      supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      'user order count'
+    );
+    if (error) throw error;
+    return count ?? 0;
   },
 
   async syncOrders() {
@@ -771,16 +803,32 @@ export const adminAPI = {
   },
 
   async getAllServices(): Promise<Service[]> {
-    const { data, error } = await runQuery(
-      supabase
-        .from('services')
-        .select('*')
-        .order('category', { ascending: true })
-        .order('name', { ascending: true }),
-      'admin services'
+    const buildAdminServicesQuery = () => supabase
+      .from('services')
+      .select('*', { count: 'exact' })
+      .order('category', { ascending: true })
+      .order('name', { ascending: true })
+      .order('id', { ascending: true });
+    const first = await runQuery(
+      buildAdminServicesQuery().range(0, SUPABASE_PAGE_SIZE - 1),
+      'admin services page 1'
     );
-    if (error) throw error;
-    return (data as Service[]) ?? [];
+    if (first.error) throw first.error;
+    const firstPage = Array.isArray(first.data) ? first.data as Service[] : [];
+    const boundedCount = Math.min(first.count ?? firstPage.length, MAX_SERVICE_CATALOG_ROWS);
+    const offsets = Array.from(
+      { length: Math.max(0, Math.ceil(boundedCount / SUPABASE_PAGE_SIZE) - 1) },
+      (_, index) => (index + 1) * SUPABASE_PAGE_SIZE
+    );
+    const remainingPages = await Promise.all(offsets.map(async (offset) => {
+      const result = await runQuery(
+        buildAdminServicesQuery().range(offset, offset + SUPABASE_PAGE_SIZE - 1),
+        `admin services page ${Math.floor(offset / SUPABASE_PAGE_SIZE) + 1}`
+      );
+      if (result.error) throw result.error;
+      return Array.isArray(result.data) ? result.data as Service[] : [];
+    }));
+    return firstPage.concat(...remainingPages);
   },
 
   async createService(service: Omit<Service, 'id'>) {
@@ -799,6 +847,18 @@ export const adminAPI = {
     );
     if (error) throw error;
     return data as Service;
+  },
+
+  async setCategoryDisplayOrder(category: string, displayOrder: number) {
+    const normalizedCategory = category.trim();
+    if (!normalizedCategory || !Number.isInteger(displayOrder)) {
+      throw new Error('Choose a valid category and whole-number display order');
+    }
+    const { error } = await runQuery(
+      supabase.from('services').update({ display_order: displayOrder }).eq('category', normalizedCategory),
+      'pin service category'
+    );
+    if (error) throw error;
   },
 
   async deleteService(serviceId: string) {

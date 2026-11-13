@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ArrowUpToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +59,8 @@ export default function AdminServicesPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [orderDrafts, setOrderDrafts] = useState<Record<string, string>>({});
+  const [categoryToPrioritize, setCategoryToPrioritize] = useState('');
+  const [prioritizingCategory, setPrioritizingCategory] = useState(false);
 
   const load = () =>
     adminAPI
@@ -108,13 +110,39 @@ export default function AdminServicesPage() {
   const commitDisplayOrder = async (service: Service) => {
     const raw = orderDrafts[service.id] ?? String(service.display_order ?? 0);
     const value = Number(raw);
-    if (!Number.isInteger(value) || Math.abs(value) > 1_000_000) {
+    if (!Number.isInteger(value) || value < -2_147_483_648 || value > 2_147_483_647) {
       setOrderDrafts((drafts) => ({ ...drafts, [service.id]: String(service.display_order ?? 0) }));
-      toast.error('Display order must be a whole number from -1,000,000 to 1,000,000');
+      toast.error('Display order must be a whole number within the supported range');
       return;
     }
     if (value === (service.display_order ?? 0)) return;
     await saveStorefrontSetting(service, { display_order: value });
+  };
+
+  const prioritizeCategory = async () => {
+    if (!categoryToPrioritize || services.length === 0) return;
+    setPrioritizingCategory(true);
+    const lowestOrder = services.reduce((lowest, service) => Math.min(lowest, service.display_order ?? 0), 0);
+    const nextOrder = Math.max(-2_147_483_647, lowestOrder - 1);
+    try {
+      await adminAPI.setCategoryDisplayOrder(categoryToPrioritize, nextOrder);
+      setServices((rows) => rows.map((row) => row.category === categoryToPrioritize
+        ? { ...row, display_order: nextOrder }
+        : row));
+      setOrderDrafts((drafts) => {
+        const next = { ...drafts };
+        services.filter((service) => service.category === categoryToPrioritize).forEach((service) => {
+          next[service.id] = String(nextOrder);
+        });
+        return next;
+      });
+      refreshPublicCatalog();
+      toast.success(`${categoryToPrioritize} services moved to the top of the customer catalog`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not prioritize this category');
+    } finally {
+      setPrioritizingCategory(false);
+    }
   };
 
   const openCreate = () => {
@@ -262,6 +290,31 @@ export default function AdminServicesPage() {
             </DialogContent>
           </Dialog>
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="prioritize-service-category">Prioritize a category</Label>
+            <select
+              id="prioritize-service-category"
+              value={categoryToPrioritize}
+              onChange={(event) => setCategoryToPrioritize(event.target.value)}
+              className="h-10 w-full rounded-xl border border-white/10 bg-ink-950 px-3 text-sm text-white outline-none transition focus:border-primary-400"
+            >
+              <option value="">Choose a category</option>
+              {[...new Set(services.map((service) => service.category))].sort((a, b) => a.localeCompare(b)).map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+          <Button onClick={() => void prioritizeCategory()} disabled={!categoryToPrioritize || prioritizingCategory || loading}>
+            <ArrowUpToLine /> {prioritizingCategory ? 'Moving category…' : 'Move category to top'}
+          </Button>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Puts all services in the selected category before other categories in the customer catalog. Individual service ordering remains available below.
+        </p>
       </Card>
 
       <Card>

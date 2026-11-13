@@ -17,6 +17,9 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowUpRight,
+  Wallet,
+  ClipboardList,
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -57,12 +60,18 @@ function NewOrderInner() {
   const [quantity, setQuantity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderNeedsReview, setOrderNeedsReview] = useState<Order | null>(null);
+  const [totalOrders, setTotalOrders] = useState<number | null>(null);
 
   const preselectedServiceId = params.get('service');
 
   useEffect(() => {
     if (!profile?.id) return;
     let active = true;
+    ordersAPI.countOrders().then((count) => {
+      if (active) setTotalOrders(count);
+    }).catch((error) => {
+      console.warn('[NewOrder] Could not load order count', error);
+    });
     ordersAPI.getOrders().then((orders) => {
       if (!active) return;
       const unresolved = orders.find((order) =>
@@ -170,6 +179,7 @@ function NewOrderInner() {
         qty,
         selected.completion_time ?? 24
       );
+      setTotalOrders((count) => count === null ? 1 : count + 1);
       const providerResult = await ordersAPI.placeWithProvider(savedOrder.id);
       if (providerResult?.pending) {
         setOrderNeedsReview({ ...savedOrder, status: 'processing' });
@@ -194,7 +204,9 @@ function NewOrderInner() {
       let latestOrder: Order | undefined;
       try {
         await refreshProfile();
-        latestOrder = (await ordersAPI.getOrders()).find((order) => order.id === savedOrder?.id);
+        const refreshedOrders = await ordersAPI.getOrders();
+        setTotalOrders(await ordersAPI.countOrders());
+        latestOrder = refreshedOrders.find((order) => order.id === savedOrder?.id);
       } catch (refreshError) {
         console.warn('[NewOrder] Could not reconcile provider submission result', refreshError);
       }
@@ -213,6 +225,25 @@ function NewOrderInner() {
 
   return (
     <DashboardShell variant="user" title="New Order">
+      {/* Customer order KPIs */}
+      <section aria-label="Your order summary" className="grid grid-cols-3 gap-2 sm:gap-3">
+        {[
+          { label: 'Account Balance', value: profile ? formatAmount(profile.balance) : '—', icon: Wallet, tone: 'text-emerald-300 bg-emerald-400/10' },
+          { label: 'Total Orders', value: totalOrders === null ? '—' : totalOrders.toLocaleString(), icon: ClipboardList, tone: 'text-violet-300 bg-violet-400/10' },
+          { label: 'Total Spent', value: profile ? formatAmount(profile.total_spent) : '—', icon: DollarSign, tone: 'text-sky-300 bg-sky-400/10' },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <Card key={label} className="min-w-0 rounded-2xl p-3 sm:p-4">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8', tone)}>
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <p className="min-w-0 text-[9px] font-semibold leading-tight text-muted-foreground sm:text-xs">{label}</p>
+            </div>
+            <p className="mt-2 truncate text-sm font-bold tabular text-white sm:text-xl" title={value}>{value}</p>
+          </Card>
+        ))}
+      </section>
+
       {/* Platform tabs */}
       <Card className="p-3 sm:p-4">
         <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
